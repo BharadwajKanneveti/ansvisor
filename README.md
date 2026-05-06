@@ -23,13 +23,15 @@ Track how your brand appears in answers from ChatGPT, Gemini, Perplexity, Claude
 
 ## Features
 
-- **AI Search Tracking** — Monitor how AI engines (ChatGPT, Gemini, Perplexity, Grok, Claude) mention your brand
-- **Brand Visibility Analytics** — Real-time dashboard with visibility scores and trend analysis
-- **Competitor Tracking** — Compare your AI presence against competitors
-- **Content Optimization** — AI-powered suggestions to improve your brand's representation
-- **Prompt Volume Analysis** — Understand search demand across AI platforms
+- **Answer Engine Insights** — Real-time visibility scores across ChatGPT, Gemini, Perplexity, Claude, Copilot and Grok with weekly trend analysis
+- **Topics** — Cluster prompts by intent and topic so you can see exactly which themes your brand wins or loses
+- **Prompts** — Track unlimited natural-language queries, get AI-generated prompt suggestions based on competitor citations, and analyze monthly search volume per prompt
+- **Citations** — See every URL AI engines cite alongside your brand, classified by source type (news, review, owned, social, forum)
+- **AI Traffic Analytics** — Tracking pixel that measures real visits arriving from AI answer engines, with platform breakdown, top landing pages, and country segmentation
+- **Competitors** — Compare your AI presence against named competitors and surface visibility gaps to close
+- **Content Optimization** — AI-generated content briefs (title, outline, target keywords, competitor insights) with one-click webhook delivery to your CMS or workflow
 - **Multi-language Support** — 13 languages, 18 regions
-- **Self-hosted or Cloud** — Run on your own infrastructure with all features unlocked
+- **Self-hosted or Cloud** — Run it on your own infrastructure with every feature unlocked, or use the managed cloud at [ansvisor.com](https://ansvisor.com)
 
 ## Quick Start
 

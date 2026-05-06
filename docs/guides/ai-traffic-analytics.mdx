@@ -1,0 +1,72 @@
+---
+title: "AI Traffic Analytics"
+description: "Measure real visits to your site from AI answer engines."
+---
+
+## Why this exists
+
+Most analytics platforms (Google Analytics, Plausible, etc.) lump AI traffic into "direct" or "referral" buckets — they can't tell you a visitor arrived from ChatGPT vs. perplexity.ai. Ansvisor's tracking pixel reads the referrer chain, classifies AI sources by domain, and gives you a clean breakdown.
+
+## Setup
+
+<Steps>
+  <Step title="Get the snippet">
+    On the **AI Traffic Analytics** page (`/dashboard/traffic`), copy the snippet at the top. It looks like:
+    ```html
+    <script src="https://api.ansvisor.com/t.js" data-t="YOUR_TRACKING_CODE" defer></script>
+    ```
+  </Step>
+  <Step title="Paste into your site">
+    Add the script before `</head>` on every page you want to track. For Next.js, drop it in your root layout. For Wordpress, use a header injection plugin. For static sites, edit the template.
+  </Step>
+  <Step title="Wait for first visits">
+    Visits start appearing immediately. The dashboard updates in near-realtime (≤1 minute).
+  </Step>
+</Steps>
+
+## What you see
+
+<CardGroup cols={2}>
+  <Card title="KPI strip" icon="gauge-high">
+    Total AI-referred visits, top platform, unique platforms — all with 7-day delta.
+  </Card>
+  <Card title="Trend chart" icon="chart-line">
+    Daily breakdown by AI platform, last 7 days.
+  </Card>
+  <Card title="Platform table" icon="table-list">
+    Per-platform visit counts with week-over-week change.
+  </Card>
+  <Card title="Top landing pages" icon="file">
+    Which URLs on your site receive the most AI-driven traffic.
+  </Card>
+  <Card title="Recent visits log" icon="list">
+    Real-time stream of the last 10–50 AI visits with platform, page, country, and timestamp.
+  </Card>
+</CardGroup>
+
+## Supported AI sources
+
+Pixel detects and classifies referrers from:
+
+- ChatGPT (chatgpt.com, chat.openai.com, search.chatgpt.com)
+- Perplexity (perplexity.ai)
+- Claude (claude.ai)
+- Gemini (gemini.google.com)
+- Copilot (copilot.microsoft.com)
+- You.com, Phind, Meta AI, Poe
+
+Anything else falls into `unknown` — likely a future AI source we haven't catalogued yet. The list is updated regularly.
+
+## Privacy
+
+The pixel collects: referrer, URL, country (via IP geolocation), language, screen size, anonymized IP, user agent. **It does NOT use cookies, fingerprinting, or any cross-site identifiers.** No GDPR consent banner needed in most jurisdictions.
+
+## Common patterns
+
+- **Spike on a Friday** — usually a viral Reddit/Twitter thread that AI engines indexed and started recommending
+- **Sudden country shift** — Perplexity or Gemini changed regional weighting; not a metric you control
+- **Specific page surge** — one of your articles is being cited as authoritative; lock it in with internal links to defend
+
+<Card title="Continue: Competitors" icon="arrow-right" href="/guides/competitors">
+  Benchmark your AI presence against named rivals.
+</Card>

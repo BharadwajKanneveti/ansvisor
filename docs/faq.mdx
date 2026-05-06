@@ -1,0 +1,50 @@
+---
+title: "FAQ"
+description: "Common questions about Ansvisor."
+---
+
+<AccordionGroup>
+  <Accordion title="Is Ansvisor really fully open source?">
+    Yes. Every line of code that powers ansvisor.com is in the [public repo](https://github.com/aeohub/ansvisor) under MIT. No paywalled features in the self-hosted build — the cloud service is just a hosted convenience.
+  </Accordion>
+
+  <Accordion title="What's the cost difference between cloud and self-hosted?">
+    Cloud has a flat monthly subscription that includes everything (AI provider quotas, infrastructure, support). Self-hosted is free in software cost but you pay your own AI provider bills (OpenAI, Gemini, Anthropic) plus DataForSEO/Cloro if you use them.
+
+    Rough back-of-envelope: a brand tracking 30 prompts daily across 4 AI engines costs ~$5–15/month in API fees, depending on response length and provider mix.
+  </Accordion>
+
+  <Accordion title="Why don't you scrape ChatGPT/Gemini directly?">
+    For programmable AI engines (OpenAI, Anthropic, Google Gemini API), Ansvisor uses official APIs — most reliable, well-priced, and TOS-compliant. For *web* AI engines that don't have public APIs (like ChatGPT.com search results), Ansvisor uses Cloro as a managed scraping backend. Cloro handles browser fingerprinting, captcha bypass, and rate-limiting at scale.
+  </Accordion>
+
+  <Accordion title="How often does tracking run?">
+    Default schedule is once per day per brand. You can configure per-platform frequency under brand settings (e.g. ChatGPT daily, Perplexity 3x/week, Gemini weekly) to manage AI provider costs.
+  </Accordion>
+
+  <Accordion title="My visibility score is 0. Did setup go wrong?">
+    Probably not. Brand-new brands or those in non-English-language niches commonly start at 0 across most prompts. The score reflects what AI engines *currently* cite — closing that gap with content + earned media is exactly what AEO is for.
+  </Accordion>
+
+  <Accordion title="Can I see the actual AI responses, not just metrics?">
+    Yes. Click any prompt or platform cell on the Insights page; the drill-down sheet shows the full LLM response, parsed citations, sentiment, and detected competitor mentions.
+  </Accordion>
+
+  <Accordion title="How do I get help?">
+    - **Bugs / feature requests**: [GitHub Issues](https://github.com/aeohub/ansvisor/issues)
+    - **Discussion**: [GitHub Discussions](https://github.com/aeohub/ansvisor/discussions)
+    - **Cloud customers**: support email in your dashboard footer
+  </Accordion>
+
+  <Accordion title="Is my data private?">
+    For self-hosted: 100% on your infrastructure, never touches Ansvisor servers. For cloud: standard SaaS privacy — your prompts and responses are stored in our managed Supabase, isolated per organization via RLS, never used for training. Full DPA available on request for enterprise plans.
+  </Accordion>
+
+  <Accordion title="Does Ansvisor work for non-English brands?">
+    Yes — 13 languages and 18 regions supported. AI engines respond in the language of the prompt; Ansvisor's mention/citation parsing is language-agnostic.
+  </Accordion>
+
+  <Accordion title="How do I contribute?">
+    Read [CONTRIBUTING.md](https://github.com/aeohub/ansvisor/blob/main/CONTRIBUTING.md) in the repo. We welcome PRs for: new AI engine adapters, additional citation classifiers, language packs, UI polish, and bug fixes. For larger features, open an issue first to align.
+  </Accordion>
+</AccordionGroup>

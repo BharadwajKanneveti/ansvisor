@@ -1,0 +1,74 @@
+---
+title: "Content Optimization"
+description: "Turn visibility gaps into editorial briefs delivered to your CMS."
+---
+
+## What this module does
+
+The **Content Optimization** page (`/dashboard/content`) lists *opportunities* — prompts where you have a visibility gap relative to competitors. Each opportunity carries:
+
+- A title (the angle of attack)
+- An impact rating (high / medium / low) based on prompt volume × visibility gap
+- Source data (related prompt, est. AI volume, visibility, competitor gap %, intent, keywords, competitors cited)
+- An "opportunity score" 0–100
+
+## From opportunity to brief
+
+<Steps>
+  <Step title="Click into an opportunity">
+    Navigate from the list to the detail page. You see the full source data and any existing brief.
+  </Step>
+  <Step title="Generate Brief">
+    If no brief exists, click **Generate Content Brief**. An LLM produces a structured brief with:
+    - Suggested article title
+    - Content type (technical preview, comparison, how-to, listicle, etc.)
+    - Target word count
+    - Outline (5–8 sections, each with key points)
+    - Target keywords (5–8 SEO + AEO blended)
+    - Competitor insights paragraph (what rivals are doing right, where the gap is, what to attack)
+    - Call to action recommendation
+  </Step>
+  <Step title="Send to your workflow">
+    Click **Send to workflow** to fire a webhook with the brief payload. The opportunity status moves from `new` → `sent`.
+  </Step>
+  <Step title="Mark as done after publishing">
+    Once your team ships the article, mark the opportunity as `done`. Ansvisor monitors the related prompt; if visibility climbs ≥10% in the following 4 weeks, you'll get a "win recap" notification.
+  </Step>
+</Steps>
+
+## Webhook configuration
+
+Set up a webhook once, fire briefs at it from any opportunity:
+
+- Open `/dashboard/content` and click **Webhook settings** in the toolbar
+- Set the **URL** (e.g. Notion automation, Zapier, Linear webhook, custom endpoint)
+- Set a **secret** (HMAC-signed payloads — recommended)
+- Toggle **Active**
+
+Payload schema:
+```json
+{
+  "opportunityId": "uuid",
+  "brandId": "uuid",
+  "brandName": "string",
+  "opportunity": { ...full opportunity object... },
+  "brief": { ...full brief object... },
+  "sentAt": "2026-05-06T10:00:00Z"
+}
+```
+
+## Bulk operations
+
+On the listing page you can:
+- Multi-select opportunities and **bulk send to webhook** (great for kicking off a content sprint)
+- Bulk update status (mark a batch as `dismissed` if they're not relevant this quarter)
+
+## Strategy notes
+
+- **Don't ship every brief** — pick the top 2–4 high-impact opportunities per week. Editorial bandwidth is the bottleneck.
+- **Re-generate briefs after publishing** — once you've shipped one piece, regenerate adjacent briefs; the AI now has different competitive context
+- **Mix owned and earned** — some opportunities are best closed with a guest post or PR placement (`type: earned`), not a new owned page
+
+<Card title="Self-host setup" icon="server" href="/self-host/docker-compose">
+  Ready to run Ansvisor on your own infrastructure?
+</Card>

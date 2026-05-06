@@ -1,0 +1,86 @@
+---
+title: "Quickstart"
+description: "Track your first brand in under 10 minutes — cloud or self-hosted."
+---
+
+## Pick a path
+
+<Tabs>
+  <Tab title="Managed Cloud (recommended)">
+
+The fastest way to start. No infrastructure, no env files.
+
+<Steps>
+  <Step title="Sign up at ansvisor.com">
+    Create an account at [ansvisor.com/sign-up](https://ansvisor.com/sign-up). All paid plans include a 7-day free trial.
+  </Step>
+  <Step title="Add your first brand">
+    On the onboarding screen, enter your brand name, primary domain, and industry. Ansvisor auto-suggests starter prompts based on your industry — you can edit them or accept all.
+  </Step>
+  <Step title="Wait for the first tracking run">
+    The first round of AI engine queries runs automatically and completes in 5–15 minutes. You'll receive an email when results are ready.
+  </Step>
+  <Step title="Open Answer Engine Insights">
+    Once tracking finishes, head to **Insights** in the sidebar. You'll see your initial visibility score, platform breakdown, and the prompts where you're cited (or not).
+  </Step>
+</Steps>
+
+  </Tab>
+  <Tab title="Self-host with Docker">
+
+For teams who want full control and zero per-seat pricing.
+
+<Steps>
+  <Step title="Clone the repo and prepare env files">
+    ```bash
+    git clone https://github.com/aeohub/ansvisor.git
+    cd ansvisor
+    cp web/.env.example web/.env
+    cp server/.env.example server/.env
+    ```
+    Fill in Supabase URL/keys, at least one AI provider key, and Cloro API key.
+    See [Self-host → Env variables](/self-host/env-variables) for the full reference.
+  </Step>
+  <Step title="Run database migrations">
+    ```bash
+    cd supabase
+    supabase db push
+    ```
+    Or apply `supabase/migrations/*.sql` manually via the Supabase dashboard.
+  </Step>
+  <Step title="Start the stack">
+    ```bash
+    docker compose up -d
+    ```
+    Web is now on `http://localhost:3000`, API server on `http://localhost`.
+  </Step>
+  <Step title="Sign up and onboard">
+    Open `http://localhost:3000`, create the first user account (becomes org admin), then follow the onboarding flow to add your first brand.
+  </Step>
+</Steps>
+
+  </Tab>
+</Tabs>
+
+## What happens next
+
+After your first tracking run completes, the dashboard fills with data. The most useful first walkthrough:
+
+<CardGroup cols={2}>
+  <Card title="Read your visibility score" icon="gauge-high" href="/guides/answer-engine-insights">
+    Understand what the score means and how it's calculated.
+  </Card>
+  <Card title="Review citations" icon="quote-left" href="/guides/citations">
+    See which third-party URLs AI engines trust to talk about you.
+  </Card>
+  <Card title="Find content gaps" icon="magnifying-glass-chart" href="/guides/content-optimization">
+    Generate AI content briefs to close visibility gaps.
+  </Card>
+  <Card title="Add competitors" icon="users" href="/guides/competitors">
+    Benchmark your AI presence against named rivals.
+  </Card>
+</CardGroup>
+
+<Tip>
+**Got stuck?** Open an issue at [github.com/aeohub/ansvisor/issues](https://github.com/aeohub/ansvisor/issues) — we read every report.
+</Tip>

@@ -1,0 +1,56 @@
+---
+title: "Competitors"
+description: "Track named competitors and benchmark visibility side-by-side."
+---
+
+## Adding competitors
+
+On the **Competitors** page (`/dashboard/competitors`) click `+ Add competitor`. Each competitor has:
+
+- **Name** — exactly as it appears in AI responses (e.g. *Salesforce*, not *salesforce.com*)
+- **Domain** (optional) — used for citation cross-checks
+
+Aim for 3–8 competitors. Fewer than 3 and benchmarks have no signal; more than 8 and the comparison view gets noisy.
+
+## What the page shows
+
+For each competitor:
+- Mention frequency across your tracked prompts (last 7 days, last 30 days)
+- Visibility share vs. yours
+- Top 3 prompts where the competitor leads
+- Trend delta — is the competitor gaining ground or losing it?
+
+## Comparison views
+
+<Steps>
+  <Step title="Side-by-side per prompt">
+    Drill into any prompt: shows your visibility vs. each competitor on that single prompt across all platforms.
+  </Step>
+  <Step title="Topic-level competitive map">
+    Each topic shows which competitor leads, the gap percentage, and how the gap has moved week-over-week.
+  </Step>
+  <Step title="Platform skew">
+    Some competitors might dominate Perplexity but underperform on ChatGPT (or vice-versa). The platform skew chart highlights these for targeted optimization.
+  </Step>
+</Steps>
+
+## Auto-discovered competitors
+
+Even if you don't add competitors manually, AI responses **mention** other brands when answering your prompts. The Insights drill-down sheet exposes these — recurring names you didn't add are strong candidates for the competitors list.
+
+<Tip>
+**Workflow tip**: monthly, review the auto-discovered names. If a brand you've never heard of is being cited 3+ times across your prompts, add it to your list. They're a stealth competitor that AI engines already know about.
+</Tip>
+
+## Closing visibility gaps
+
+Once a gap is visible, the workflow is:
+
+1. Identify the prompt(s) where the competitor leads most
+2. Inspect the AI response — what content/citation is the competitor winning with?
+3. Generate a content brief targeting that prompt (Content Optimization)
+4. Ship the piece, earn placements, monitor 2–4 weeks for the gap to close
+
+<Card title="Continue: Content Optimization" icon="arrow-right" href="/guides/content-optimization">
+  Generate AI content briefs to systematically close visibility gaps.
+</Card>

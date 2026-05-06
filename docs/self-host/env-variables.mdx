@@ -1,0 +1,64 @@
+---
+title: "Environment variables"
+description: "Full reference for every env var across web and server."
+---
+
+## Web (`web/.env`)
+
+Fed to the Next.js app. Variables prefixed with `NEXT_PUBLIC_` are exposed to the browser.
+
+| Variable | Required | Description |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | ✅ | Your Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ | Supabase anon key (public, RLS-protected) |
+| `SUPABASE_SERVICE_ROLE_KEY` | ✅ | Service role key (bypasses RLS — used for server actions; never expose) |
+| `NEXT_PUBLIC_API_URL` | ✅ | Server URL (e.g. `https://api.your-domain.com` or `http://localhost`) |
+| `NEXT_PUBLIC_APP_URL` | ✅ | Web app URL (used for OAuth callback URLs) |
+| `OPENAI_API_KEY` | optional* | OpenAI API key |
+| `GOOGLE_GEMINI_API_KEY` | optional* | Google AI Studio Gemini key |
+| `ANTHROPIC_API_KEY` | optional* | Anthropic Claude key |
+| `PERPLEXITY_API_KEY` | optional* | Perplexity API key |
+| `GROK_API_KEY` | optional* | xAI Grok key |
+| `NEXT_PUBLIC_IS_CLOUD` | optional | `"true"` for the official cloud build (enables billing UI). Leave unset for self-hosted (all features unlocked). |
+| `STRIPE_SECRET_KEY` | cloud only | Stripe live/test secret key |
+| `STRIPE_WEBHOOK_SECRET` | cloud only | Stripe webhook signing secret |
+| `CRON_SECRET` | cloud only | Shared secret for Vercel cron → server auth |
+
+\* You need **at least one AI provider key** for tracking to work. Configure providers per-brand in the dashboard.
+
+## Server (`server/.env`)
+
+Fed to the Express API + workers.
+
+| Variable | Required | Description |
+|---|---|---|
+| `NODE_ENV` | ✅ | `production` for live, `development` for local |
+| `PORT` | ✅ | Default `80` |
+| `SUPABASE_URL` | ✅ | Same as web's `NEXT_PUBLIC_SUPABASE_URL` |
+| `SUPABASE_ANON_KEY` | ✅ | Supabase anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | ✅ | Service role key (used by workers and admin endpoints) |
+| `OPENAI_API_KEY` | optional* | OpenAI key |
+| `ANTHROPIC_API_KEY` | optional* | Anthropic key |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | optional* | Google Gemini key (server-side name differs from web) |
+| `DEFAULT_SUGGESTION_MODEL` | optional | Default LLM for AI suggestions (default: `google/gemini-3-flash-preview`) |
+| `TOPIC_SUGGESTION_MODEL` | optional | LLM for topic suggestions |
+| `PROMPT_SUGGESTION_MODEL` | optional | LLM for prompt suggestions |
+| `COMPETITOR_SUGGESTION_MODEL` | optional | LLM for competitor suggestions |
+| `ALLOWED_ORIGINS` | ✅ | Comma-separated list of web origins allowed to call the API (for CORS) |
+| `IS_CLOUD` | optional | `"true"` only for the official cloud build |
+| `DATAFORSEO_LOGIN` | optional | DataForSEO login (for prompt volume analysis) |
+| `DATAFORSEO_PASSWORD` | optional | DataForSEO password |
+| `CLORO_API_KEY` | optional | Cloro web scraper API key (for ChatGPT/Gemini/Perplexity web scraping) |
+| `PLATFORM_PROVIDER` | optional | Default `cloro`. Used to pick scraper backend |
+| `AI_VOLUME_MULTIPLIER` | optional | Estimated AI search adoption rate (default `0.15` = 15% of Google volume) |
+| `CRON_SECRET` | cloud only | Shared secret with web's CRON_SECRET; protects internal cron endpoints |
+
+## Tips for production
+
+- **Mark secrets as sensitive** — on Vercel, toggle the *Sensitive* flag on every secret env var. Once set, the value is write-only and can't be read back from the UI.
+- **Rotate `SUPABASE_SERVICE_ROLE_KEY` and `CRON_SECRET`** quarterly as a hygiene practice
+- **Use a different Supabase project for each environment** (dev / staging / prod). Don't share databases across environments — RLS bypasses make it easy to corrupt prod data with a misconfigured dev pointer
+
+<Card title="Continue: Upgrading" icon="arrow-right" href="/self-host/upgrading">
+  How to upgrade your self-hosted instance to a new release.
+</Card>

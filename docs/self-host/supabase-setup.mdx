@@ -1,0 +1,58 @@
+---
+title: "Supabase setup"
+description: "Prepare a Supabase project for Ansvisor — schema, RLS, auth triggers."
+---
+
+## Create the project
+
+1. Go to [supabase.com](https://supabase.com/) and create a new project
+2. Pick a region close to your server (latency matters for DB-heavy operations)
+3. Save the database password somewhere safe
+4. From **Project Settings → API**, copy:
+   - `Project URL`
+   - `anon public` key → goes into `NEXT_PUBLIC_SUPABASE_ANON_KEY` and `SUPABASE_ANON_KEY`
+   - `service_role` key → goes into `SUPABASE_SERVICE_ROLE_KEY` (keep this secret — it bypasses RLS)
+
+## Apply migrations
+
+The repo ships SQL migrations under `supabase/migrations/`. Apply them in order:
+
+<Tabs>
+  <Tab title="Supabase CLI (recommended)">
+    ```bash
+    npm install -g supabase
+    cd supabase
+    supabase link --project-ref YOUR_PROJECT_REF
+    supabase db push
+    ```
+  </Tab>
+  <Tab title="Manual via dashboard">
+    1. Open Supabase dashboard → SQL Editor
+    2. For each file in `supabase/migrations/` (in alphabetical order), paste contents → Run
+    3. Verify all tables created under **Database → Tables**
+  </Tab>
+</Tabs>
+
+## What the migrations create
+
+- 16 tables (`organizations`, `profiles`, `brands`, `prompts`, `prompt_results`, `topics`, `competitors`, `content_opportunities`, `prompt_suggestions`, `ai_traffic_logs`, `webhook_configs`, etc.)
+- RLS (Row-Level Security) policies for multi-tenant isolation by `organization_id`
+- An auth trigger that auto-creates a `profile` row when a new user signs up
+- The `user_role` enum (`admin`, `manager`, `analyst`, `agency_partner`)
+- Index optimization for analytics-heavy queries (per-brand, per-day windows)
+
+## Auth configuration
+
+In Supabase dashboard → **Authentication → URL Configuration**:
+- **Site URL**: your web app URL (`http://localhost:3000` for dev, `https://app.example.com` for prod)
+- **Redirect URLs**: add `<site_url>/auth/callback`
+
+Optionally enable OAuth providers (Google, GitHub) under **Authentication → Providers** if you want social sign-in.
+
+## Storage (optional)
+
+If you'll let users upload brand logos, create a public storage bucket called `brand-logos`. The web app handles upload/access automatically once it exists.
+
+<Card title="Continue: Env variables" icon="arrow-right" href="/self-host/env-variables">
+  Full reference for every env var in `web/.env` and `server/.env`.
+</Card>

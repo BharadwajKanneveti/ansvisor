@@ -1,0 +1,107 @@
+{
+  "$schema": "https://mintlify.com/schema.json",
+  "name": "Ansvisor",
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "favicon": "/favicon.svg",
+  "colors": {
+    "primary": "#6366f1",
+    "light": "#a5b4fc",
+    "dark": "#4338ca",
+    "anchors": {
+      "from": "#6366f1",
+      "to": "#8b5cf6"
+    }
+  },
+  "topbarLinks": [
+    {
+      "name": "GitHub",
+      "url": "https://github.com/aeohub/ansvisor"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Try the Cloud",
+    "url": "https://ansvisor.com"
+  },
+  "anchors": [
+    {
+      "name": "GitHub",
+      "icon": "github",
+      "url": "https://github.com/aeohub/ansvisor"
+    },
+    {
+      "name": "Changelog",
+      "icon": "list",
+      "url": "https://github.com/aeohub/ansvisor/releases"
+    }
+  ],
+  "tabs": [
+    {
+      "name": "Guides",
+      "url": "guides"
+    },
+    {
+      "name": "Self-host",
+      "url": "self-host"
+    },
+    {
+      "name": "API Reference",
+      "url": "api-reference"
+    }
+  ],
+  "navigation": [
+    {
+      "group": "Get Started",
+      "pages": ["introduction", "quickstart"]
+    },
+    {
+      "group": "Concepts",
+      "pages": [
+        "concepts/what-is-aeo",
+        "concepts/visibility-scoring",
+        "concepts/topics-and-prompts"
+      ]
+    },
+    {
+      "group": "Platform Guides",
+      "pages": [
+        "guides/add-your-first-brand",
+        "guides/answer-engine-insights",
+        "guides/topics",
+        "guides/prompts",
+        "guides/citations",
+        "guides/ai-traffic-analytics",
+        "guides/competitors",
+        "guides/content-optimization"
+      ]
+    },
+    {
+      "group": "Self-host",
+      "pages": [
+        "self-host/docker-compose",
+        "self-host/supabase-setup",
+        "self-host/env-variables",
+        "self-host/upgrading"
+      ]
+    },
+    {
+      "group": "API Reference",
+      "pages": [
+        "api-reference/authentication",
+        "api-reference/brands",
+        "api-reference/tracking",
+        "api-reference/webhooks"
+      ]
+    },
+    {
+      "group": "Help",
+      "pages": ["faq"]
+    }
+  ],
+  "footerSocials": {
+    "github": "https://github.com/aeohub/ansvisor",
+    "website": "https://ansvisor.com"
+  }
+}

@@ -1,0 +1,83 @@
+---
+title: "Tracking"
+description: "Trigger AI engine queries and inspect tracking jobs."
+---
+
+## Trigger a tracking run
+
+```http
+POST /api/tracking/start
+Content-Type: application/json
+Authorization: Bearer <SUPABASE_JWT>
+
+{
+  "brandId": "uuid",
+  "platforms": ["chatgpt", "gemini", "perplexity"],
+  "models": ["gemini-2.5-flash"]
+}
+```
+
+Enqueues a tracking job. Returns:
+
+```json
+{
+  "success": true,
+  "jobId": "job-uuid"
+}
+```
+
+## Poll job status
+
+```http
+GET /api/tracking/job/{jobId}
+Authorization: Bearer <SUPABASE_JWT>
+```
+
+Returns:
+
+```json
+{
+  "status": "active",
+  "progress": { "phase": "querying-platforms", "completed": 12, "total": 30 },
+  "result": null,
+  "failedReason": null
+}
+```
+
+`status` values: `waiting`, `active`, `completed`, `failed`, `cancelled`.
+
+## Internal cron endpoint
+
+The web app's cron route (`/api/cron/daily-tracking`) calls the server's internal endpoint with a shared secret:
+
+```http
+POST /cron/daily-tracking
+Authorization: Bearer <CRON_SECRET>
+```
+
+This loops over every brand in the org, picks brands due for refresh based on `brand_platforms.check_frequency`, and enqueues tracking jobs for them.
+
+<Note>
+Vercel Cron triggers `/api/cron/daily-tracking` on a schedule defined in `web/vercel.json`. To run the same flow manually for testing, hit the server endpoint directly with the cron secret.
+</Note>
+
+## Latest results
+
+For UI rendering, prefer the optimized RPC:
+
+```http
+POST /rest/v1/rpc/get_latest_prompt_results
+Content-Type: application/json
+Authorization: Bearer <SUPABASE_JWT>
+
+{
+  "p_brand_id": "uuid",
+  "p_platform": "chatgpt"  // optional
+}
+```
+
+Returns the most recent `prompt_results` row per `(prompt_id, platform)` — much cheaper than `SELECT … ORDER BY created_at DESC LIMIT 1` per prompt in app code.
+
+<Card title="Continue: Webhooks" icon="arrow-right" href="/api-reference/webhooks">
+  Outbound webhooks for content briefs and lifecycle events.
+</Card>

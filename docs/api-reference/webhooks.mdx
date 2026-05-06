@@ -1,0 +1,102 @@
+---
+title: "Webhooks"
+description: "Outbound webhooks for content briefs and lifecycle events."
+---
+
+## Configuration
+
+Webhooks are configured per-brand via the `webhook_configs` table. The dashboard UI for this lives in **Content → Webhook settings**.
+
+Required fields:
+- `webhook_url` — your endpoint
+- `webhook_secret` — used to HMAC-sign payloads (recommended)
+- `events` — array of subscribed events (currently: `content_brief.sent`, `opportunity.created`, `opportunity.status_changed`)
+- `is_active` — toggle without deleting
+
+## Payload format
+
+All webhooks use the same envelope:
+
+```json
+{
+  "event": "content_brief.sent",
+  "occurredAt": "2026-05-06T10:00:00Z",
+  "brandId": "uuid",
+  "brandName": "Acme Corp",
+  "data": { ... event-specific payload ... }
+}
+```
+
+## Signature verification
+
+If `webhook_secret` is set, Ansvisor signs each payload with HMAC-SHA256:
+
+```
+X-Ansvisor-Signature: sha256=<hex digest>
+X-Ansvisor-Timestamp: <unix ms>
+```
+
+Verification (Node example):
+
+```js
+import crypto from 'crypto';
+
+function verify(rawBody, signatureHeader, timestampHeader, secret) {
+  const expected = crypto
+    .createHmac('sha256', secret)
+    .update(`${timestampHeader}.${rawBody}`)
+    .digest('hex');
+  const sig = signatureHeader.replace('sha256=', '');
+  return crypto.timingSafeEqual(
+    Buffer.from(sig, 'hex'),
+    Buffer.from(expected, 'hex'),
+  );
+}
+```
+
+Reject any payload where:
+- Signature mismatches
+- Timestamp is older than 5 minutes (replay protection)
+
+## Event reference
+
+### `content_brief.sent`
+
+Fired when a user clicks "Send to workflow" on a content opportunity.
+
+```json
+{
+  "event": "content_brief.sent",
+  "data": {
+    "opportunityId": "uuid",
+    "opportunity": { ...full opportunity object... },
+    "brief": { ...full brief object... }
+  }
+}
+```
+
+### `opportunity.created`
+
+Fired when the content optimization worker generates a new opportunity.
+
+### `opportunity.status_changed`
+
+Fired when an opportunity moves between statuses (`new` → `sent` → `in_progress` → `done` / `dismissed`).
+
+## Retries
+
+Failed deliveries (non-2xx response, timeout, connection error) retry with exponential backoff:
+- Attempt 1 — immediately
+- Attempt 2 — after 30 seconds
+- Attempt 3 — after 5 minutes
+- Attempt 4 — after 30 minutes
+
+After 4 failed attempts, the delivery is marked failed and logged to `webhook_response`. No further retries are attempted automatically — you can resend manually from the dashboard.
+
+## Testing
+
+The Content → Webhook settings page includes a **Test webhook** button that fires a synthetic `content_brief.sent` event so you can validate your endpoint before going live.
+
+<Card title="Help center" icon="circle-question" href="/faq">
+  Common questions and troubleshooting.
+</Card>

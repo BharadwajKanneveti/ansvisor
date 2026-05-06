@@ -1,0 +1,74 @@
+---
+title: "Add your first brand"
+description: "Step-by-step walkthrough of brand onboarding."
+---
+
+## Prerequisites
+
+- A logged-in Ansvisor account ([cloud](https://ansvisor.com/sign-up) or [self-hosted](/self-host/docker-compose))
+- 5–10 minutes
+- The primary domain you want to track
+
+## Walkthrough
+
+<Steps>
+  <Step title="Open the Add Brand flow">
+    From the dashboard, click **Brands** in the sidebar, then **+ Add Brand** (or visit `/dashboard/brands/new` directly).
+  </Step>
+  <Step title="Enter brand basics">
+    - **Brand name** — exactly how the brand is named in the wild (e.g. *Mercedes-Benz*, not *MBZ*). Casing matters because mention detection matches case-insensitively but suggestions copy your spelling.
+    - **Primary domain** — your main website (`mbusa.com`, `linear.app`). Used for citation classification and AI traffic attribution.
+    - **Industry** — a free-text or selected category. Drives default prompt suggestions.
+    - **Region** — primary market (US, EU, TR, etc.). Affects prompt language and AI engine region routing.
+    - **Description** — 1–3 sentences about what the brand does. Fed into prompt generation.
+  </Step>
+  <Step title="Review auto-generated prompts">
+    Ansvisor generates 10 starter prompts based on your industry and description. They're shown as a checklist — review them, edit text inline, and uncheck any that don't fit. You can always add more later.
+
+    <Tip>
+    A good starter set covers: 2–3 *industry best-of* prompts, 2–3 *how-to* prompts, 2–3 *comparison/alternative* prompts, 1–2 *recommendation* prompts. Avoid brand-name-containing prompts — they don't measure organic AI mention rate.
+    </Tip>
+  </Step>
+  <Step title="Pick AI engines">
+    Select which engines run each prompt. Default is **ChatGPT + Gemini + Perplexity + Claude**. Add Copilot, Grok, or Meta AI if relevant to your audience.
+
+    <Note>
+    More engines = more API/scraper calls = higher monthly cost in cloud mode. Self-hosted is unlimited.
+    </Note>
+  </Step>
+  <Step title="Add competitors (optional but recommended)">
+    Enter 2–5 competitor names. The competitor tracking module needs at least one to work. Names should be exactly as you'd see them in an AI response (e.g. *Salesforce*, *HubSpot*).
+  </Step>
+  <Step title="Configure tracking pixel (optional)">
+    If you want **AI Traffic Analytics** (visits arriving from AI answer engines), grab the snippet from the Traffic page and paste it before `</head>` on your site. Tracking starts immediately.
+  </Step>
+  <Step title="Save and trigger first run">
+    Click **Save brand**. The first round of AI engine queries kicks off automatically — usually completes in 5–15 minutes. You'll get an email when results are ready, but the dashboard updates live as data comes in.
+  </Step>
+</Steps>
+
+## What to do while you wait
+
+The first tracking run takes a few minutes. Useful things to do during that time:
+
+- **Insights tab** will populate first — even before all platforms finish, you can already see the first prompts coming in
+- Browse the **Citations** page to see which third-party URLs are showing up
+- Skim the **Suggestions** card on the Insights tab — it'll have AI-generated prompt ideas based on your initial run
+
+## Common pitfalls
+
+<AccordionGroup>
+  <Accordion title="My visibility score is 0 — is something broken?">
+    Probably not. New, niche, or B2B brands often start at 0 across most prompts. AI engines need (1) significant training data mentioning your brand, or (2) live citations from authoritative sources. The score only stays at 0 when both are missing — fixing that is exactly what AEO is for.
+  </Accordion>
+  <Accordion title="Prompts include my brand name — should I remove?">
+    Yes. *"What is Linear?"* style prompts almost always score 100 (the AI obviously talks about you when asked) but they're not measuring organic discovery. Remove brand-name prompts from your tracked set; they distort averages.
+  </Accordion>
+  <Accordion title="I see weird competitors I never heard of in my results">
+    That's gold. Those are AI-suggested alternatives users see when you're not cited. Add the most-mentioned ones to your competitors list to track them properly.
+  </Accordion>
+</AccordionGroup>
+
+<Card title="Continue: Reading Answer Engine Insights" icon="arrow-right" href="/guides/answer-engine-insights">
+  Now that data is flowing, learn to read the dashboard.
+</Card>

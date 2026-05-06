@@ -1,0 +1,58 @@
+---
+title: "Authentication"
+description: "How to authenticate API requests to the Ansvisor server."
+---
+
+## Bearer token
+
+All `/api/*` endpoints on the Ansvisor server require a Supabase JWT bearer token in the `Authorization` header:
+
+```bash
+curl https://api.your-domain.com/api/health \
+  -H "Authorization: Bearer <SUPABASE_JWT>"
+```
+
+## Getting a token
+
+The cleanest way is via the Supabase JS client in your own backend code:
+
+```ts
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const { data: { session } } = await supabase.auth.signInWithPassword({
+  email,
+  password,
+});
+
+const token = session.access_token;
+```
+
+The web app does this automatically — every server action and fetch attaches the current session token transparently.
+
+## Cron endpoints
+
+A handful of internal endpoints (used by Vercel Cron and Stripe success callbacks) authenticate via a shared `CRON_SECRET` instead of user tokens:
+
+```bash
+curl https://api.your-domain.com/cron/daily-tracking \
+  -H "Authorization: Bearer $CRON_SECRET"
+```
+
+The same secret must be configured on both sides (Vercel env + server env).
+
+## Public endpoints
+
+Three endpoints don't require any auth:
+
+- `GET /t.js` — tracking pixel script
+- `POST /t/collect` — tracking pixel beacon (validates origin against `brand_domains`)
+- `GET /healthz` (where exposed) — basic uptime check
+
+<Note>
+The internal `/api/health` endpoint described in the routes file IS auth-protected — by design, it returns the authenticated user's ID. For uptime monitoring, use `/t.js` instead (returns 200 + JS content).
+</Note>
+
+<Card title="Continue: Brands API" icon="arrow-right" href="/api-reference/brands">
+  CRUD endpoints for managing brands programmatically.
+</Card>

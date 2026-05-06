@@ -1,0 +1,95 @@
+---
+title: "Docker Compose setup"
+description: "Run the full Ansvisor stack on your own server in 10 minutes."
+---
+
+## Stack overview
+
+The repo ships with two services in `docker-compose.yml`:
+
+- **web** — Next.js 16 dashboard, port `3000`
+- **server** — Express API + workers, port `80`
+
+Plus an external dependency:
+- **Supabase project** — database, auth, storage. You provide URL + keys.
+
+## Prerequisites
+
+- Linux host with Docker 24+ and Docker Compose v2
+- Open ports `80` (API) and `3000` (web) — or front them with a reverse proxy
+- A Supabase project ([free tier](https://supabase.com/) works fine)
+- API keys for at least one AI provider (OpenAI, Anthropic, Google Gemini)
+
+## Steps
+
+<Steps>
+  <Step title="Clone the repo">
+    ```bash
+    git clone https://github.com/aeohub/ansvisor.git
+    cd ansvisor
+    ```
+  </Step>
+  <Step title="Apply database migrations">
+    Either use the Supabase CLI:
+    ```bash
+    cd supabase
+    supabase link --project-ref YOUR_PROJECT_REF
+    supabase db push
+    ```
+    Or paste each `.sql` file in `supabase/migrations/` into the Supabase SQL editor in order.
+  </Step>
+  <Step title="Configure env files">
+    ```bash
+    cp web/.env.example web/.env
+    cp server/.env.example server/.env
+    ```
+    Fill in Supabase URL/keys, AI provider keys, and (optional) DataForSEO + Cloro credentials.
+    See [Env variables](/self-host/env-variables) for the full reference.
+  </Step>
+  <Step title="Start the stack">
+    ```bash
+    docker compose up -d
+    docker compose logs -f
+    ```
+    Web is now on `http://localhost:3000`, API on `http://localhost`.
+  </Step>
+  <Step title="Create your first user">
+    Open `http://localhost:3000/sign-up` and register. The first user becomes org admin automatically.
+  </Step>
+</Steps>
+
+## Production hardening
+
+For a real deployment behind a domain (e.g. `app.example.com` + `api.example.com`):
+
+- Front both services with **Cloudflare** (proxied) or **Caddy/Nginx** for HTTPS
+- Use **AWS Security Groups** / firewall rules to restrict origin ports to known IPs
+- Set `NEXT_PUBLIC_API_URL=https://api.example.com` and `ALLOWED_ORIGINS=https://app.example.com` accordingly
+- Mount logs to a persistent volume or ship to a logging service
+
+<Tip>
+For solo deploys we recommend **Cloudflare proxied + Flexible SSL** for the API hostname. Zero certificate management, HTTPS works in 2 minutes.
+</Tip>
+
+## Updating to a new release
+
+```bash
+cd ansvisor
+git pull
+docker compose up -d --build
+```
+
+Migrations under `supabase/migrations/` run forward-only — re-running `supabase db push` is idempotent.
+
+## Splitting web and server across hosts
+
+Common setup: web on Vercel, server + workers on a VM.
+
+1. Don't run `docker compose up` for web — deploy `web/` to Vercel directly via Git integration
+2. On the VM, run only the server: `docker compose up -d server`
+3. In Vercel, set `NEXT_PUBLIC_API_URL=https://api.your-domain.com`
+4. In server's env, set `ALLOWED_ORIGINS=https://your-vercel-domain.com`
+
+<Card title="Continue: Supabase setup" icon="arrow-right" href="/self-host/supabase-setup">
+  Detailed Supabase project preparation (schema, RLS, triggers).
+</Card>
