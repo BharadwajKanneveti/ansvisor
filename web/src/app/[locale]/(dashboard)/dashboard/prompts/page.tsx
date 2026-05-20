@@ -31,6 +31,7 @@ import {
   RefreshCw,
   Pencil,
   Settings2,
+  Download,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useBrandStore } from '@/stores/use-brand-store';
@@ -48,6 +49,7 @@ import {
 import { aggregatePromptVolumeClusters } from '@/lib/prompt-volume-clusters';
 import type { PromptVolume, Prompt } from '@/types';
 import { toast } from 'sonner';
+import { toCsv } from '@/lib/csv';
 
 // ─── Info Tooltip ─────────────────────────────────────────────────────────────
 
@@ -131,6 +133,26 @@ const INTENT_COLORS: Record<string, string> = {
   'problem-solving':
     'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400',
 };
+
+const PROMPT_EXPORT_HEADERS = [
+  'text',
+  'topic_id',
+  'category',
+  'platforms',
+  'models',
+  'regions',
+  'is_active',
+  'created_at',
+  'est_ai_volume',
+  'total_google_volume',
+  'intent',
+  'avg_visibility_30d',
+  'total_mentions_30d',
+  'runs_30d',
+  'last_run_at',
+];
+
+const PROMPT_EXPORT_HINT = 'No prompts yet - add prompts first.';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -222,6 +244,9 @@ export default function PromptsPage() {
   const [quota, setQuota] = useState<VolumeQuota | null>(null);
 
   const activeBrandId = useBrandStore((s) => s.activeBrandId);
+  const activeBrand = useBrandStore(
+    (s) => s.brands.find((brand) => brand.id === s.activeBrandId) ?? null,
+  );
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -422,6 +447,43 @@ export default function PromptsPage() {
     return m;
   }, [volumes]);
 
+  const canExport = !loading && allPrompts.length > 0;
+
+  const handleExportCsv = useCallback(() => {
+    if (!canExport) return;
+
+    const rows = allPrompts.map((p) => ({
+      text: p.text,
+      topic_id: p.topicId ?? '',
+      category: p.category ?? '',
+      platforms: p.platforms.join(', '),
+      models: p.models.join(', '),
+      regions: p.regions.join(', '),
+      is_active: p.isActive,
+      created_at: p.createdAt,
+      est_ai_volume: volumeByPromptId.get(p.id)?.estAiVolume ?? '',
+      total_google_volume: volumeByPromptId.get(p.id)?.totalGoogleVolume ?? '',
+      intent: volumeByPromptId.get(p.id)?.intent ?? '',
+      avg_visibility_30d: visibility[p.id]?.avgVisibility ?? '',
+      total_mentions_30d: visibility[p.id]?.totalMentions ?? '',
+      runs_30d: visibility[p.id]?.runs ?? '',
+      last_run_at: visibility[p.id]?.lastRunAt ?? '',
+    }));
+
+    const csv = toCsv(rows, PROMPT_EXPORT_HEADERS);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const date = new Date().toISOString().slice(0, 10);
+    const slug = activeBrand?.slug ?? 'brand';
+
+    link.href = url;
+    link.download = `ansvisor_${slug}_prompts_${date}.csv`;
+    link.click();
+
+    URL.revokeObjectURL(url);
+  }, [activeBrand?.slug, canExport, allPrompts, visibility, volumeByPromptId]);
+
   if (!activeBrandId) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -452,13 +514,31 @@ export default function PromptsPage() {
             <TabsTrigger value="all">All Prompts</TabsTrigger>
             <TabsTrigger value="insights">Insights</TabsTrigger>
           </TabsList>
-          <Link
-            href={`/dashboard/brands/${activeBrandId}/prompts`}
-            className={buttonVariants({ variant: 'outline', size: 'sm' })}
-          >
-            <Settings2 className="h-4 w-4" />
-            Manage prompts
-          </Link>
+          <div className="flex items-center gap-2">
+            {tab === 'all' && (
+              <span title={!canExport ? PROMPT_EXPORT_HINT : undefined}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={handleExportCsv}
+                  disabled={!canExport}
+                >
+                  <Download className="h-4 w-4" />
+                  Export CSV
+                </Button>
+              </span>
+            )}
+
+            <Link
+              href={`/dashboard/brands/${activeBrandId}/prompts`}
+              className={buttonVariants({ variant: 'outline', size: 'sm' })}
+            >
+              <Settings2 className="h-4 w-4" />
+              Manage prompts
+            </Link>
+          </div>
         </div>
 
         {/* ─── All Prompts tab ─────────────────────────────────────────── */}
