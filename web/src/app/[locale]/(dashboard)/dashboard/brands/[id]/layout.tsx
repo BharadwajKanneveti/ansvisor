@@ -41,7 +41,7 @@ export default function BrandDetailLayout({
       {/* Brand header + back */}
       <div className="flex items-center gap-4">
         <Link href="/dashboard/brands">
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" aria-label="Back to brands list">
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>

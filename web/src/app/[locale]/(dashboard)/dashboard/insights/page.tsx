@@ -927,6 +927,7 @@ function PlatformSubGroup({
                               e.stopPropagation();
                               onViewResult(r);
                             }}
+                            aria-label="View previous run details"
                           >
                             <Eye className="h-3 w-3" />
                           </Button>
@@ -1019,6 +1020,7 @@ function PromptSubGroup({
               e.stopPropagation();
               onRefresh(group.promptId);
             }}
+            aria-label="Refresh prompt results"
           >
             {refreshingId === group.promptId ? (
               <Loader2 className="h-3 w-3 animate-spin" />

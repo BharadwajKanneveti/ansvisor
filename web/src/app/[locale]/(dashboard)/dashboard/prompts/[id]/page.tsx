@@ -250,6 +250,7 @@ function PlatformResultGroup({
                     event.stopPropagation();
                     onViewResult(result);
                   }}
+                  aria-label="View response details"
                 >
                   <Eye className="h-3.5 w-3.5" />
                 </Button>

@@ -182,6 +182,7 @@ export function SuggestionsCard({ brandId }: Props) {
                       onClick={() => handleAccept(s)}
                       disabled={busy}
                       title="Add to tracked prompts"
+                      aria-label="Add to tracked prompts"
                     >
                       {busy ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -195,7 +196,8 @@ export function SuggestionsCard({ brandId }: Props) {
                       className="h-8 w-8 text-muted-foreground"
                       onClick={() => handleDismiss(s)}
                       disabled={busy}
-                      title="Dismiss"
+                      title="Dismiss suggestion"
+                      aria-label="Dismiss suggestion"
                     >
                       <X className="h-3.5 w-3.5" />
                     </Button>

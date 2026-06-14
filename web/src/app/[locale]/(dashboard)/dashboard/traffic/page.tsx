@@ -134,7 +134,13 @@ function SnippetBanner({ trackingCode }: { trackingCode?: string }) {
             </pre>
           </div>
         </div>
-        <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8" onClick={handleCopy}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="shrink-0 h-8 w-8"
+          onClick={handleCopy}
+          aria-label="Copy tracking script"
+        >
           {copied ? (
             <Check className="h-3.5 w-3.5 text-green-500" />
           ) : (

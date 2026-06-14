@@ -161,6 +161,7 @@ export const PromptSuggestionCard = memo(function PromptSuggestionCard({
                 className="h-7 w-7 shrink-0"
                 onClick={handleSave}
                 disabled={!editText.trim() || !hasAnySelection}
+                aria-label="Save changes"
               >
                 <Check className="h-3.5 w-3.5" />
               </Button>
@@ -169,6 +170,7 @@ export const PromptSuggestionCard = memo(function PromptSuggestionCard({
                 variant="ghost"
                 className="h-7 w-7 shrink-0"
                 onClick={handleCancel}
+                aria-label="Cancel edit"
               >
                 <X className="h-3.5 w-3.5" />
               </Button>
@@ -327,6 +329,7 @@ export const PromptSuggestionCard = memo(function PromptSuggestionCard({
                 variant="ghost"
                 className="h-7 w-7"
                 onClick={() => setIsEditing(true)}
+                aria-label="Edit prompt"
               >
                 <Pencil className="h-3 w-3" />
               </Button>
@@ -338,6 +341,7 @@ export const PromptSuggestionCard = memo(function PromptSuggestionCard({
                         size="icon"
                         variant="ghost"
                         className="h-7 w-7 text-destructive hover:text-destructive"
+                        aria-label="Delete prompt"
                       />
                     }
                   >

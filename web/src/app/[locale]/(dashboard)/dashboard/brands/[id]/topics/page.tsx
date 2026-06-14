@@ -159,6 +159,7 @@ export default function BrandTopicsPage({ params }: PageProps) {
                           size="icon"
                           className="h-7 w-7 shrink-0"
                           onClick={() => handleEdit(topic.id)}
+                          aria-label="Save topic changes"
                         >
                           <Check className="h-3.5 w-3.5" />
                         </Button>
@@ -167,6 +168,7 @@ export default function BrandTopicsPage({ params }: PageProps) {
                           size="icon"
                           className="h-7 w-7 shrink-0"
                           onClick={() => setEditingId(null)}
+                          aria-label="Cancel edit"
                         >
                           <X className="h-3.5 w-3.5" />
                         </Button>
@@ -184,6 +186,7 @@ export default function BrandTopicsPage({ params }: PageProps) {
                                 setEditingId(topic.id);
                                 setEditName(topic.name);
                               }}
+                              aria-label="Edit topic"
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
@@ -194,6 +197,7 @@ export default function BrandTopicsPage({ params }: PageProps) {
                                     variant="ghost"
                                     size="icon"
                                     className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
+                                    aria-label="Delete topic"
                                   />
                                 }
                               >

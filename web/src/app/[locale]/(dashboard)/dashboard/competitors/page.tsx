@@ -700,6 +700,7 @@ function ModelSubGroup({
               e.stopPropagation();
               onViewRow(group.latest);
             }}
+            aria-label="View latest AI response"
           >
             <Eye className="h-3.5 w-3.5" />
           </Button>
@@ -750,6 +751,7 @@ function ModelSubGroup({
                         e.stopPropagation();
                         onViewRow(row);
                       }}
+                      aria-label="View AI response"
                     >
                       <Eye className="h-3 w-3" />
                     </Button>

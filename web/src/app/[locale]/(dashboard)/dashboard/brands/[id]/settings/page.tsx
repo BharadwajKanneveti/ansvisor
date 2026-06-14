@@ -409,6 +409,7 @@ function DomainsTab({
                   size="icon"
                   className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
                   onClick={() => removeDomainLocal(d.id)}
+                  aria-label="Remove domain"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
@@ -441,6 +442,7 @@ function DomainsTab({
               size="icon"
               onClick={addDomain}
               disabled={!newDomain.trim()}
+              aria-label="Add domain"
             >
               <Plus className="h-4 w-4" />
             </Button>
@@ -557,6 +559,7 @@ function CompetitorsTab({ brandId }: { brandId: string }) {
                         size="icon"
                         className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
                         onClick={() => setDeletingId(c.id)}
+                        aria-label="Delete competitor"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
@@ -693,6 +696,7 @@ function TrackingTab({ brand }: { brand: Brand }) {
                   size="icon"
                   className="shrink-0"
                   onClick={() => copyToClipboard(brand.trackingCode!, 'code')}
+                  aria-label="Copy tracking code"
                 >
                   {copied === 'code' ? (
                     <Check className="h-4 w-4 text-green-500" />
@@ -720,6 +724,7 @@ function TrackingTab({ brand }: { brand: Brand }) {
                     size="icon"
                     className="absolute top-2 right-2 h-7 w-7"
                     onClick={() => copyToClipboard(snippet, 'snippet')}
+                    aria-label="Copy tracking script"
                   >
                     {copied === 'snippet' ? (
                       <Check className="h-3.5 w-3.5 text-green-500" />
