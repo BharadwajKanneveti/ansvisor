@@ -4,11 +4,21 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
-import { Loader2, ArrowLeft, Trash2 } from 'lucide-react';
+import { Loader2, ArrowLeft, Trash2, RefreshCw } from 'lucide-react';
 import { Link, useRouter } from '@/i18n/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { getAudit, deleteAudit, type AuditResult } from '@/lib/actions/audits';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { getAudit, runAudit, deleteAudit, type AuditResult } from '@/lib/actions/audits';
 import { AuditReport } from '@/components/audit/audit-report';
 
 export default function AuditDetailPage() {
@@ -78,6 +88,17 @@ export default function AuditDetailPage() {
     }
   };
 
+  // Re-run the audit on the same URL → navigate to the new audit's detail page.
+  const handleRefresh = async () => {
+    if (!audit) return;
+    try {
+      const started = await runAudit(audit.brandId, audit.url);
+      router.push(`/dashboard/audit/${started.id}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : tFailed);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -88,15 +109,43 @@ export default function AuditDetailPage() {
           <ArrowLeft className="h-4 w-4" /> {t('title')}
         </Link>
         {audit && audit.status !== 'running' && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-            onClick={handleDelete}
-            aria-label={t('deleteAudit')}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              onClick={handleRefresh}
+              aria-label={t('reaudit')}
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+            </Button>
+            <Dialog>
+              <DialogTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                    aria-label={t('deleteAudit')}
+                  />
+                }
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-sm">
+                <DialogHeader>
+                  <DialogTitle>{t('deleteAudit')}</DialogTitle>
+                  <DialogDescription>{t('deleteConfirm')}</DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <DialogClose render={<Button variant="outline" />}>{t('cancel')}</DialogClose>
+                  <DialogClose render={<Button variant="destructive" onClick={handleDelete} />}>
+                    {t('deleteAudit')}
+                  </DialogClose>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
         )}
       </div>
 
