@@ -51,6 +51,9 @@ const FORUM_DOMAINS = [
   'bimmerpost.com',
   'rennlist.com',
   'teslamotorsclub.com',
+  'serverfault.com',
+  'superuser.com',
+  'askubuntu.com',
 ];
 
 const SOCIAL_DOMAINS = [
@@ -66,6 +69,7 @@ const SOCIAL_DOMAINS = [
   'threads.net',
   'medium.com',
   'substack.com',
+  'discord.com',
 ];
 
 const REVIEW_DOMAINS = [
@@ -77,6 +81,9 @@ const REVIEW_DOMAINS = [
   'yelp.com',
   'sitejabber.com',
   'bbb.org',
+  'glassdoor.com',
+  'softwareadvice.com',
+  'resellerratings.com',
 ];
 
 const INSTITUTIONAL_DOMAINS = [
@@ -142,7 +149,6 @@ const EDITORIAL_DOMAINS = [
   'top10.com',
   'thedrive.com',
   'hemmings.com',
-  'engadget.com',
   'digitaltrends.com',
   'tomsguide.com',
   'pcmag.com',
