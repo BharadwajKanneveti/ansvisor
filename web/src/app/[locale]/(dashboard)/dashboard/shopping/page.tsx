@@ -8,7 +8,7 @@ const DynamicPlatformCardRateChart = dynamic(
   {
     ssr: false,
     loading: () => <Skeleton className="h-[220px] w-full" />,
-  }
+  },
 );
 
 const DynamicShoppingTrendChart = dynamic(
@@ -16,7 +16,7 @@ const DynamicShoppingTrendChart = dynamic(
   {
     ssr: false,
     loading: () => <Skeleton className="h-[220px] w-full" />,
-  }
+  },
 );
 import {
   ShoppingBag,
@@ -974,12 +974,7 @@ function ResponsiveBarChart({ data }: { data: Array<{ platform: string; rate: nu
   }, []);
   return (
     <div ref={ref} style={{ width: '100%', height: 220 }}>
-      {width > 0 && (
-       <DynamicPlatformCardRateChart
-         width={width}
-         data={data}
-        />
-      )}
+      {width > 0 && <DynamicPlatformCardRateChart width={width} data={data} />}
     </div>
   );
 }
@@ -1023,12 +1018,7 @@ function ResponsiveLineChart({
   }, []);
   return (
     <div ref={ref} style={{ width: '100%', height: 220 }}>
-      {width > 0 && (
-        <DynamicShoppingTrendChart
-          width={width}
-          data={data}
-          />
-      )}
+      {width > 0 && <DynamicShoppingTrendChart width={width} data={data} />}
     </div>
   );
 }

@@ -33,10 +33,7 @@ type PlatformCardRateChartViewProps = {
   }>;
 };
 
-export function PlatformCardRateChartView({
-  width,
-  data,
-}: PlatformCardRateChartViewProps) {
+export function PlatformCardRateChartView({ width, data }: PlatformCardRateChartViewProps) {
   return (
     <BarChart
       width={width}
@@ -44,38 +41,15 @@ export function PlatformCardRateChartView({
       data={data}
       margin={{ top: 8, right: 8, bottom: 0, left: -8 }}
     >
-      <CartesianGrid
-        stroke="var(--border)"
-        strokeDasharray="3 3"
-        vertical={false}
-      />
+      <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
 
-      <XAxis
-        dataKey="platform"
-        stroke="var(--border)"
-        tick={AXIS_TICK}
-        tickLine={false}
-      />
+      <XAxis dataKey="platform" stroke="var(--border)" tick={AXIS_TICK} tickLine={false} />
 
-      <YAxis
-        stroke="var(--border)"
-        tick={AXIS_TICK}
-        tickLine={false}
-        axisLine={false}
-        unit="%"
-      />
+      <YAxis stroke="var(--border)" tick={AXIS_TICK} tickLine={false} axisLine={false} unit="%" />
 
-      <Tooltip
-        contentStyle={TOOLTIP_STYLE}
-        cursor={{ fill: 'var(--muted)', opacity: 0.3 }}
-      />
+      <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'var(--muted)', opacity: 0.3 }} />
 
-      <Bar
-        dataKey="rate"
-        name="Card rate"
-        fill="var(--chart-2)"
-        radius={[4, 4, 0, 0]}
-      />
+      <Bar dataKey="rate" name="Card rate" fill="var(--chart-2)" radius={[4, 4, 0, 0]} />
     </BarChart>
   );
 }
@@ -89,10 +63,7 @@ type ShoppingTrendChartViewProps = {
   }>;
 };
 
-export function ShoppingTrendChartView({
-  width,
-  data,
-}: ShoppingTrendChartViewProps) {
+export function ShoppingTrendChartView({ width, data }: ShoppingTrendChartViewProps) {
   return (
     <LineChart
       width={width}
@@ -100,11 +71,7 @@ export function ShoppingTrendChartView({
       data={data}
       margin={{ top: 8, right: 8, bottom: 0, left: -8 }}
     >
-      <CartesianGrid
-        stroke="var(--border)"
-        strokeDasharray="3 3"
-        vertical={false}
-      />
+      <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
 
       <XAxis
         dataKey="date"
@@ -114,17 +81,9 @@ export function ShoppingTrendChartView({
         tickFormatter={(v: string) => v.slice(5)}
       />
 
-      <YAxis
-        stroke="var(--border)"
-        tick={AXIS_TICK}
-        tickLine={false}
-        axisLine={false}
-      />
+      <YAxis stroke="var(--border)" tick={AXIS_TICK} tickLine={false} axisLine={false} />
 
-      <Tooltip
-        contentStyle={TOOLTIP_STYLE}
-        cursor={{ stroke: 'var(--border)' }}
-      />
+      <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ stroke: 'var(--border)' }} />
 
       <Legend
         wrapperStyle={{

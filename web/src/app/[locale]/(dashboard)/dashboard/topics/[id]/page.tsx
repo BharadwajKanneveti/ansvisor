@@ -35,14 +35,11 @@ import { ShareOfVoicePlatformChart } from '../../insights/_charts';
 import { cn } from '@/lib/utils';
 import dynamic from 'next/dynamic';
 const DynamicVisibilityTrendChart = dynamic(
-  () =>
-    import('./topic_charts').then(
-      (m) => m.VisibilityTrendChartView
-    ),
+  () => import('./topic_charts').then((m) => m.VisibilityTrendChartView),
   {
     ssr: false,
     loading: () => <Skeleton className="h-[260px] w-full" />,
-  }
+  },
 );
 
 function ChartContainer({
@@ -140,12 +137,7 @@ function VisibilityTrendChart({ data }: { data: VisibilityTrendPoint[] }) {
   }
   return (
     <ChartContainer height={260}>
-      {(width) => (
-       <DynamicVisibilityTrendChart
-         width={width}
-         data={data}
-       />
-      )}
+      {(width) => <DynamicVisibilityTrendChart width={width} data={data} />}
     </ChartContainer>
   );
 }

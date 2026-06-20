@@ -4,20 +4,17 @@ import { useState, useEffect, useCallback } from 'react';
 import { getPlatformName } from './_charts';
 import dynamic from 'next/dynamic';
 import { Skeleton } from '@/components/ui/skeleton';
-const ReferralTrendChart = dynamic(
-  () => import('./_charts').then((m) => m.ReferralTrendChart),
-  {
-    ssr: false,
-    loading: () => <Skeleton className="h-64 w-full" />,
-  }
-);
+const ReferralTrendChart = dynamic(() => import('./_charts').then((m) => m.ReferralTrendChart), {
+  ssr: false,
+  loading: () => <Skeleton className="h-64 w-full" />,
+});
 
 const PlatformBreakdownChart = dynamic(
   () => import('./_charts').then((m) => m.PlatformBreakdownChart),
   {
     ssr: false,
     loading: () => <Skeleton className="h-64 w-full" />,
-  }
+  },
 );
 import { useBrandStore } from '@/stores/use-brand-store';
 import {

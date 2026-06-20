@@ -6,20 +6,17 @@ import { useSearchParams } from 'next/navigation';
 import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
 import { Skeleton } from '@/components/ui/skeleton';
-const CompetitorChart = dynamic(
-  () => import('./_charts').then((m) => m.CompetitorChart),
-  {
-    ssr: false,
-    loading: () => <Skeleton className="h-64 w-full" />,
-  }
-);
+const CompetitorChart = dynamic(() => import('./_charts').then((m) => m.CompetitorChart), {
+  ssr: false,
+  loading: () => <Skeleton className="h-64 w-full" />,
+});
 
 const CompetitorLeaderboard = dynamic(
   () => import('./_charts').then((m) => m.CompetitorLeaderboard),
   {
     ssr: false,
     loading: () => <Skeleton className="h-64 w-full" />,
-  }
+  },
 );
 
 const ShareOfVoicePlatformChart = dynamic(
@@ -27,7 +24,7 @@ const ShareOfVoicePlatformChart = dynamic(
   {
     ssr: false,
     loading: () => <Skeleton className="h-64 w-full" />,
-  }
+  },
 );
 
 const ShareOfVoiceTrendChart = dynamic(
@@ -35,7 +32,7 @@ const ShareOfVoiceTrendChart = dynamic(
   {
     ssr: false,
     loading: () => <Skeleton className="h-64 w-full" />,
-  }
+  },
 );
 import { MetricBreakdownSheet } from './_metric-breakdown-sheet';
 import { groupResultsByTopic, type PlatformGroup, type PromptGroup } from './grouping';

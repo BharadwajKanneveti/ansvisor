@@ -1,13 +1,6 @@
 'use client';
 
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+import { Area, AreaChart, CartesianGrid, Tooltip, XAxis, YAxis } from 'recharts';
 
 import type { VisibilityTrendPoint } from '@/lib/actions/tracking';
 
@@ -37,11 +30,7 @@ export function VisibilityTrendChartView({
         </linearGradient>
       </defs>
 
-      <CartesianGrid
-        strokeDasharray="3 3"
-        className="stroke-border"
-        vertical={false}
-      />
+      <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
 
       <XAxis
         dataKey="date"

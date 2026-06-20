@@ -7,12 +7,11 @@ import type { AgentChartSpec } from '@/components/agent/agent-chart';
 import dynamic from 'next/dynamic';
 import { Skeleton } from '@/components/ui/skeleton';
 const AgentChart = dynamic(
-  () =>
-    import('@/components/agent/agent-chart').then((m) => m.AgentChart),
+  () => import('@/components/agent/agent-chart').then((m) => m.AgentChart),
   {
     ssr: false,
     loading: () => <Skeleton className="h-64 w-full" />,
-  }
+  },
 );
 import { useFeatureGate } from '@/hooks/use-feature-gate';
 import { Link } from '@/i18n/navigation';

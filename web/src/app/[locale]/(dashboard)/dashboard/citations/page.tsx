@@ -5,14 +5,11 @@ import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
 const DynamicSourceTypeDonutChart = dynamic(
-  () =>
-    import('./citations_charts').then(
-      (m) => m.SourceTypeDonutChartView
-    ),
+  () => import('./citations_charts').then((m) => m.SourceTypeDonutChartView),
   {
     ssr: false,
     loading: () => <Skeleton className="h-[200px] w-full" />,
-  }
+  },
 );
 import { Quote, Globe, ExternalLink, Filter as FilterIcon, Layers } from 'lucide-react';
 import { useBrandStore } from '@/stores/use-brand-store';
@@ -352,12 +349,7 @@ function SourceTypeDonut({
     <div className="flex flex-col gap-4">
       <ChartContainer height={200}>
         {(width) => {
-          return (
-           <DynamicSourceTypeDonutChart
-              width={width}
-              chartData={chartData}
-            />
-          );
+          return <DynamicSourceTypeDonutChart width={width} chartData={chartData} />;
         }}
       </ChartContainer>
       <ul className="grid grid-cols-2 gap-x-3 gap-y-1.5">

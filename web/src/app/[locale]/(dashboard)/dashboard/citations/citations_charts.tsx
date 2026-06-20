@@ -15,10 +15,7 @@ type SourceTypeDonutChartViewProps = {
   chartData: SourceTypeDonutChartData[];
 };
 
-export function SourceTypeDonutChartView({
-  width,
-  chartData,
-}: SourceTypeDonutChartViewProps) {
+export function SourceTypeDonutChartView({ width, chartData }: SourceTypeDonutChartViewProps) {
   const size = Math.min(width, 220);
 
   return (
