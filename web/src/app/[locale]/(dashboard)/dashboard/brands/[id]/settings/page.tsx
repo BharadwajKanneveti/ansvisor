@@ -650,7 +650,7 @@ function CompetitorsTab({ brandId }: { brandId: string }) {
 function TrackingTab({ brand }: { brand: Brand }) {
   const [copied, setCopied] = useState<'code' | 'snippet' | null>(null);
   const isCloud = process.env.NEXT_PUBLIC_IS_CLOUD === 'true';
-  const apiUrl = getPublicApiBaseUrl();;
+  const apiUrl = getPublicApiBaseUrl();
   const snippet = apiUrl
     ? `<script src="${apiUrl}/t.js" data-t="${brand.trackingCode || ''}" defer></script>`
     : '';
