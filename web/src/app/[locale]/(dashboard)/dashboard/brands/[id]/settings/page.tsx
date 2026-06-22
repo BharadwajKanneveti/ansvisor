@@ -51,6 +51,7 @@ import {
   DialogTrigger,
   DialogClose,
 } from '@/components/ui/dialog';
+import { getPublicApiBaseUrl } from '@/config/api';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -649,7 +650,7 @@ function CompetitorsTab({ brandId }: { brandId: string }) {
 function TrackingTab({ brand }: { brand: Brand }) {
   const [copied, setCopied] = useState<'code' | 'snippet' | null>(null);
   const isCloud = process.env.NEXT_PUBLIC_IS_CLOUD === 'true';
-  const apiUrl = isCloud ? 'https://api.ansvisor.com' : process.env.NEXT_PUBLIC_API_URL;
+  const apiUrl = getPublicApiBaseUrl();;
   const snippet = apiUrl
     ? `<script src="${apiUrl}/t.js" data-t="${brand.trackingCode || ''}" defer></script>`
     : '';

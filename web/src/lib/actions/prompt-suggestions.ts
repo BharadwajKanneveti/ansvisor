@@ -3,8 +3,9 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { addPromptToSet } from '@/lib/actions/prompt';
+import { API_BASE_URL } from '@/config/api';
 
-const AEO_SERVER_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost';
+const AEO_SERVER_URL = API_BASE_URL;
 
 export interface PromptSuggestion {
   id: string;

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { alignPromptsToPlanForOrg } from '@/lib/plan-engines';
+import { API_BASE_URL } from '@/config/api';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -76,7 +77,7 @@ export async function GET(req: NextRequest) {
             .single();
 
           if (brand) {
-            const serverUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost';
+            const serverUrl = API_BASE_URL;
             const cronSecret = process.env.CRON_SECRET;
 
             if (cronSecret) {

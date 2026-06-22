@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { expandDateToEndOfDay } from '@/lib/dates';
 import type { PromptResult, AIPlatform, Sentiment, Citation, CompetitorMention } from '@/types';
+import { API_BASE_URL } from '@/config/api';
 
 /** Round to one decimal place (keeps sub-1 averages visible instead of flooring to 0). */
 function roundTo1(n: number): number {
@@ -710,7 +711,7 @@ export async function triggerTrackingCheck(
   } = await supabase.auth.getSession();
   if (!session) throw new Error('Not authenticated');
 
-  const serverUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost';
+  const serverUrl = API_BASE_URL;
 
   const payload: Record<string, string> = { brandId };
   if (opts?.promptId) payload.promptId = opts.promptId;
@@ -757,7 +758,7 @@ export async function getJobStatus(jobId: string): Promise<TrackingJobStatus> {
   } = await supabase.auth.getSession();
   if (!session) throw new Error('Not authenticated');
 
-  const serverUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost';
+  const serverUrl = API_BASE_URL;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10_000);
@@ -809,7 +810,7 @@ export async function cancelTrackingJob(jobId: string): Promise<void> {
   } = await supabase.auth.getSession();
   if (!session) throw new Error('Not authenticated');
 
-  const serverUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost';
+  const serverUrl = API_BASE_URL;
 
   await fetch(`${serverUrl}/api/tracking/job/${jobId}`, {
     method: 'DELETE',

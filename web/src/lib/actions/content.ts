@@ -2,8 +2,9 @@
 
 import { createClient } from '@/lib/supabase/server';
 import type { ContentBrief, ContentOpportunity, WebhookConfig } from '@/types';
+import { API_BASE_URL } from '@/config/api';
 
-const AEO_SERVER_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost';
+const AEO_SERVER_URL = API_BASE_URL;
 
 async function getSession() {
   const supabase = await createClient();

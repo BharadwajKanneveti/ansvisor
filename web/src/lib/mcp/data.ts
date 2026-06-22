@@ -10,6 +10,7 @@ import {
 } from '@/lib/citations/classify';
 import { classifyArticleType } from '@/lib/citations/article-type';
 import { expandDateToEndOfDay } from '@/lib/dates';
+import { API_BASE_URL } from '@/config/api';
 
 /**
  * Pure data-fetch functions shared by the MCP route and the parallel REST
@@ -481,7 +482,7 @@ export async function generateBriefFor(
     .maybeSingle();
   if (!ownership) return null;
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:80';
+  const apiUrl = API_BASE_URL;
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret) {
     throw new Error('CRON_SECRET must be configured for MCP brief generation');

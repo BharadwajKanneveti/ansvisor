@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import type { PromptVolume } from '@/types';
+import { API_BASE_URL } from '@/config/api';
 
 export interface VolumeQuota {
   used: number;
@@ -9,7 +10,7 @@ export interface VolumeQuota {
   remaining: number;
 }
 
-const AEO_SERVER_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost';
+const AEO_SERVER_URL = API_BASE_URL;
 
 /**
  * Analyze a single prompt's volume via the aeo-server API.

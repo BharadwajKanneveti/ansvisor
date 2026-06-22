@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { getPlatformName } from './_charts';
 import dynamic from 'next/dynamic';
 import { Skeleton } from '@/components/ui/skeleton';
+import { getPublicApiBaseUrl } from '@/config/api';
 const ReferralTrendChart = dynamic(() => import('./_charts').then((m) => m.ReferralTrendChart), {
   ssr: false,
   loading: () => <Skeleton className="h-64 w-full" />,
@@ -120,7 +121,7 @@ function DeltaBadge({ current, previous }: { current: number; previous: number }
 function SnippetBanner({ trackingCode }: { trackingCode?: string }) {
   const [copied, setCopied] = useState(false);
   const isCloud = process.env.NEXT_PUBLIC_IS_CLOUD === 'true';
-  const apiUrl = isCloud ? 'https://api.ansvisor.com' : process.env.NEXT_PUBLIC_API_URL;
+  const apiUrl = getPublicApiBaseUrl();
   const snippet = `<script src="${apiUrl}/t.js" data-t="${trackingCode || 'YOUR_TRACKING_CODE'}" defer></script>`;
 
   if (!trackingCode || !apiUrl) return null;

@@ -57,8 +57,9 @@ import {
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { API_BASE_URL } from '@/config/api';
 
-const AEO_SERVER_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:80';
+const AEO_SERVER_URL = API_BASE_URL;
 
 // ── Step indicator ─────────────────────────────────────────────────────────────
 

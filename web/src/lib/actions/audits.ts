@@ -1,8 +1,9 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { API_BASE_URL } from '@/config/api';
 
-const AEO_SERVER_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost';
+const AEO_SERVER_URL = API_BASE_URL;
 
 export type AuditSignalStatus = 'pass' | 'warn' | 'fail' | 'na';
 
