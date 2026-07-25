@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Sidebar: Prompts moved above Topics in the Analytics group (#531)
 - Models: Claude tracking upgraded to `claude-sonnet-5` (#421); the duplicated model display-name maps were centralized in one config (#501)
 - Prompts: suggestions moved to the All Prompts tab (#466) and collapse to a one-line strip by default — zero suggestion requests until expanded (#470); Query Fan-out opens on the By Prompt view by default (#453)
 - Insights: removed the Prompt Results by Topic tree (#458, #477)
