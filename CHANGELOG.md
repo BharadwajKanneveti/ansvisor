@@ -56,6 +56,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Platform guide for Reports — templates, section picker, PDF export (#438, #527)
 - README: Blog added to Resources; website links cleaned up
 
+### Contributors
+
+Thanks to everyone who contributed to this release, including @Maqbool61, @d180, @chinmaywadhe26, @abdullah91111, @Dodothereal, @BharadwajKanneveti, @Utkarsh-Singhal-26 and @Sam-syntax35! 🙌
+
 ## [0.1.6] - 2026-07-12
 
 ### Added
