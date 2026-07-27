@@ -5,7 +5,7 @@ import { useRouter } from '@/i18n/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { createBrand } from '@/lib/actions/brand';
 import { createTopics, getTopics } from '@/lib/actions/topic';
-import { savePromptSet } from '@/lib/actions/prompt';
+import { getPromptCapacity, savePromptSet } from '@/lib/actions/prompt';
 import { triggerTrackingCheck } from '@/lib/actions/tracking';
 import { addCompetitor, getCompetitors } from '@/lib/actions/competitor';
 import { getFaviconUrl } from '@/lib/favicon';
@@ -273,6 +273,11 @@ export default function OnboardingPage() {
   const [topicPrompts, setTopicPrompts] = useState<TopicPromptsData[]>([]);
   const [loadingPrompts, setLoadingPrompts] = useState(false);
   const [promptGenError, setPromptGenError] = useState(false);
+  const [promptCapacity, setPromptCapacity] = useState<{
+    maxPrompts: number;
+    used: number;
+  } | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Step 5
   interface CompetitorItem {
@@ -337,6 +342,17 @@ export default function OnboardingPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, initialLoading]);
+
+  // Know the plan's prompt cap while reviewing, so the step can warn and
+  // disable Continue instead of failing the save afterwards.
+  useEffect(() => {
+    if (step === 4 && createdBrand && !promptCapacity) {
+      getPromptCapacity(createdBrand.id)
+        .then(setPromptCapacity)
+        .catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, createdBrand]);
 
   // Resume logic: check existing state on mount
   useEffect(() => {
@@ -704,6 +720,7 @@ export default function OnboardingPage() {
   const handleSavePromptsAndContinue = async () => {
     if (!createdBrand) return;
     setIsLoading(true);
+    setSaveError(null);
     try {
       const allPrompts = topicPrompts.flatMap((tp) =>
         tp.prompts.map((text) => ({
@@ -716,16 +733,26 @@ export default function OnboardingPage() {
       );
 
       if (allPrompts.length === 0) {
-        toast.error('Add at least one prompt before continuing');
+        setSaveError('Add at least one prompt before continuing.');
         setIsLoading(false);
         return;
       }
 
-      await savePromptSet({
+      const result = await savePromptSet({
         brandId: createdBrand.id,
         name: 'Onboarding Prompts',
         prompts: allPrompts,
       });
+      if ('error' in result) {
+        // No technical toasts on this step: actionable failures (plan limit)
+        // show verbatim inline, anything else gets a friendly retry message.
+        setSaveError(
+          result.code === 'plan_limit'
+            ? result.error
+            : "We couldn't save your prompts — please try again.",
+        );
+        return;
+      }
       track('onboarding_prompts_saved', { count: allPrompts.length });
       track('onboarding_step_completed', {
         step: 4,
@@ -736,8 +763,8 @@ export default function OnboardingPage() {
 
       setStep(5);
       fetchCompetitorSuggestions();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save prompts');
+    } catch {
+      setSaveError("We couldn't save your prompts — please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -934,6 +961,13 @@ export default function OnboardingPage() {
   };
 
   const totalPrompts = topicPrompts.reduce((sum, tp) => sum + tp.prompts.length, 0);
+  // Prompts this brand may save before hitting the org's plan cap (null =
+  // unknown or unlimited); over that, Continue is disabled with an inline hint.
+  const promptLimit =
+    promptCapacity && promptCapacity.maxPrompts !== -1
+      ? Math.max(0, promptCapacity.maxPrompts - promptCapacity.used)
+      : null;
+  const excessPrompts = promptLimit !== null ? Math.max(0, totalPrompts - promptLimit) : 0;
 
   // ── Loading state ──
 
@@ -1291,7 +1325,7 @@ export default function OnboardingPage() {
             </div>
             <Button
               onClick={handleSavePromptsAndContinue}
-              disabled={isLoading || totalPrompts === 0}
+              disabled={isLoading || totalPrompts === 0 || excessPrompts > 0}
             >
               {isLoading ? (
                 <>
@@ -1308,6 +1342,18 @@ export default function OnboardingPage() {
             <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
               Couldn&apos;t generate prompt suggestions right now — add your own to each topic below
               to continue.
+            </div>
+          )}
+
+          {excessPrompts > 0 && (
+            <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
+              Your plan includes up to {promptLimit} prompts — remove {excessPrompts} to continue.
+            </div>
+          )}
+
+          {saveError && excessPrompts === 0 && (
+            <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
+              {saveError}
             </div>
           )}
 

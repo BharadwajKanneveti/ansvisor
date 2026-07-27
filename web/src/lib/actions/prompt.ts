@@ -151,7 +151,39 @@ interface SavePromptSetInput {
   }[];
 }
 
-export async function savePromptSet(input: SavePromptSetInput): Promise<PromptSet> {
+export type SavePromptSetResult = { promptSet: PromptSet } | { error: string; code?: 'plan_limit' };
+
+/**
+ * How many prompts a brand's save may total before hitting the org's plan cap.
+ * `used` counts prompts on the org's OTHER brands only — savePromptSet
+ * replaces this brand's own set, so its current prompts don't count against a
+ * re-save. Lets the setup wizards gate the review step inline (counter +
+ * disabled Continue) instead of failing the save after the fact.
+ */
+export async function getPromptCapacity(
+  brandId: string,
+): Promise<{ maxPrompts: number; used: number }> {
+  const supabase = await createClient();
+  const { organizationId: orgId } = await getBrandContext(supabase, brandId);
+  const plan = await getOrgPlan(orgId);
+  const totalOrgPrompts = await getOrgPromptCount(supabase, orgId);
+  const { count: brandPromptCount } = await supabase
+    .from('prompts')
+    .select('id, prompt_sets!inner(brand_id)', { count: 'exact', head: true })
+    .eq('prompt_sets.brand_id', brandId);
+  return {
+    maxPrompts: plan.limits.maxPrompts,
+    used: totalOrgPrompts - (brandPromptCount ?? 0),
+  };
+}
+
+/**
+ * User-facing failures (plan limit, empty platform selection, DB errors) come
+ * back as a VALUE: production masks every error thrown from a server action,
+ * so a thrown PlanLimitError would reach users as the meaningless digest
+ * message (#427).
+ */
+export async function savePromptSet(input: SavePromptSetInput): Promise<SavePromptSetResult> {
   const supabase = await createClient();
 
   const { organizationId: orgId, region: brandRegion } = await getBrandContext(
@@ -170,7 +202,19 @@ export async function savePromptSet(input: SavePromptSetInput): Promise<PromptSe
     .eq('prompt_sets.brand_id', input.brandId);
 
   const otherPrompts = totalOrgPrompts - (brandPromptCount ?? 0);
-  await enforceLimit(orgId, 'maxPrompts', otherPrompts + input.prompts.length - 1);
+
+  // Inclusive cap: saving exactly maxPrompts is allowed; only reject when the
+  // resulting total would exceed it. Spell out the counts so the user knows
+  // exactly how many prompts to remove (onboarding generates 5 per topic, so
+  // hitting the cap there is a normal, recoverable state).
+  const maxPrompts = plan.limits.maxPrompts;
+  const requestedTotal = otherPrompts + input.prompts.length;
+  if (maxPrompts !== -1 && requestedTotal > maxPrompts) {
+    return {
+      code: 'plan_limit',
+      error: `Your ${plan.name} plan allows up to ${maxPrompts} tracked prompts and this would save ${requestedTotal}. Remove ${requestedTotal - maxPrompts} prompt${requestedTotal - maxPrompts === 1 ? '' : 's'} to continue, or upgrade your plan.`,
+    };
+  }
 
   // Delete existing prompt sets for this brand to avoid duplicates
   // (e.g. user navigated back during onboarding and re-submitted)
@@ -196,7 +240,7 @@ export async function savePromptSet(input: SavePromptSetInput): Promise<PromptSe
     .single();
 
   if (setError || !set) {
-    throw new Error(setError?.message ?? 'Failed to create prompt set');
+    return { error: setError?.message ?? 'Failed to create prompt set' };
   }
 
   // Insert prompts
@@ -221,36 +265,37 @@ export async function savePromptSet(input: SavePromptSetInput): Promise<PromptSe
       }),
     );
 
+    const rows = [];
+    for (const p of input.prompts) {
+      const filtered = filterByPlan(plan, p.platforms, p.models ?? []);
+      const platforms = stripShoppingWhenDisabled(filtered.platforms, shoppingEnabled);
+      if (platforms.length === 0 && filtered.models.length === 0) {
+        return { error: 'At least one platform or model must be selected for each prompt.' };
+      }
+      rows.push({
+        prompt_set_id: set.id,
+        text: p.text,
+        category: p.category || null,
+        topic_id: (p.category && topicIdMap.get(p.category)) || null,
+        platforms,
+        regions: [brandRegion],
+        models: filtered.models,
+        is_active: p.isActive ?? true,
+      });
+    }
+
     const { data: prompts, error: promptError } = await supabase
       .from('prompts')
-      .insert(
-        input.prompts.map((p) => {
-          const filtered = filterByPlan(plan, p.platforms, p.models ?? []);
-          const platforms = stripShoppingWhenDisabled(filtered.platforms, shoppingEnabled);
-          if (platforms.length === 0 && filtered.models.length === 0) {
-            throw new Error('At least one platform or model must be selected for each prompt.');
-          }
-          return {
-            prompt_set_id: set.id,
-            text: p.text,
-            category: p.category || null,
-            topic_id: (p.category && topicIdMap.get(p.category)) || null,
-            platforms,
-            regions: [brandRegion],
-            models: filtered.models,
-            is_active: p.isActive ?? true,
-          };
-        }),
-      )
+      .insert(rows)
       .select();
 
-    if (promptError) throw new Error(promptError.message);
+    if (promptError) return { error: promptError.message };
     insertedPrompts = (prompts as Record<string, unknown>[]) ?? [];
   }
 
   revalidatePath('/dashboard/brands');
 
-  return mapPromptSetRow(set as Record<string, unknown>, insertedPrompts);
+  return { promptSet: mapPromptSetRow(set as Record<string, unknown>, insertedPrompts) };
 }
 
 export async function updatePrompt(
