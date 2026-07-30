@@ -115,6 +115,10 @@ export interface PromptDetailData {
   };
   summary: {
     avgVisibilityScore: number;
+    /** visibleResults / totalResults as a percentage, one decimal. */
+    visibilityRate: number;
+    /** Results with >= 1 brand mention/citation. */
+    visibleResults: number;
     totalMentions: number;
     totalCitations: number;
     totalResults: number;
@@ -906,6 +910,13 @@ export async function getPromptDetail(
     totalResults > 0
       ? Math.round(results.reduce((sum, row) => sum + row.visibilityScore, 0) / totalResults)
       : 0;
+  // Prompt-level Visibility Rate — same run-visibility rule as the All
+  // Prompts column and the Insights headline (mention or citation > 0).
+  const visibleResults = results.filter(
+    (row) => row.mentionCount > 0 || row.citationCount > 0,
+  ).length;
+  const visibilityRate =
+    totalResults > 0 ? Math.round((visibleResults / totalResults) * 1000) / 10 : 0;
 
   // Aggregate citations by domain — same shape and rounding as getCitationsOverview,
   // but scoped to this prompt's already-loaded results.
@@ -997,6 +1008,8 @@ export async function getPromptDetail(
     },
     summary: {
       avgVisibilityScore,
+      visibilityRate,
+      visibleResults,
       totalMentions: results.reduce((sum, row) => sum + row.mentionCount, 0),
       totalCitations: results.reduce((sum, row) => sum + row.citationCount, 0),
       totalResults,
@@ -1301,9 +1314,15 @@ export async function cancelTrackingJob(jobId: string): Promise<void> {
 
 export interface PromptVisibilitySummary {
   avgVisibility: number;
+  /** Average score across visible runs only (null when never visible). */
+  avgVisibilityVisible: number | null;
   totalMentions: number;
   totalCitations: number;
   runs: number;
+  /** Runs with >= 1 brand mention/citation — numerator of the prompt-level rate. */
+  visibleRuns: number;
+  /** visibleRuns / runs as a percentage, one decimal — same rounding as the Insights headline. */
+  visibilityRate: number;
   lastRunAt: string;
 }
 
@@ -1337,11 +1356,16 @@ export async function getPromptVisibilitySummaries(
 
   const result: Record<string, PromptVisibilitySummary> = {};
   for (const row of data ?? []) {
+    const runs = Number(row.runs ?? 0);
+    const visibleRuns = Number(row.visible_runs ?? 0);
     result[row.prompt_id] = {
       avgVisibility: row.avg_visibility ?? 0,
+      avgVisibilityVisible: row.avg_visibility_visible ?? null,
       totalMentions: Number(row.total_mentions ?? 0),
       totalCitations: Number(row.total_citations ?? 0),
-      runs: Number(row.runs ?? 0),
+      runs,
+      visibleRuns,
+      visibilityRate: runs > 0 ? Math.round((visibleRuns / runs) * 1000) / 10 : 0,
       lastRunAt: row.last_run_at,
     };
   }

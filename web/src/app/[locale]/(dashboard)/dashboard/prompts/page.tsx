@@ -143,13 +143,14 @@ function ColHead({
 
 // ─── Sortable column header (All Prompts) ─────────────────────────────────────
 
-type AllPromptsSortKey = 'visibility' | 'mentions' | 'citations' | 'volume' | 'lastRun';
+type AllPromptsSortKey = 'visibility' | 'mentions' | 'citations' | 'volume' | 'runs' | 'lastRun';
 
 const ALL_PROMPTS_SORT_KEYS: AllPromptsSortKey[] = [
   'visibility',
   'mentions',
   'citations',
   'volume',
+  'runs',
   'lastRun',
 ];
 
@@ -221,6 +222,8 @@ const PROMPT_EXPORT_HEADERS = [
   'est_ai_volume',
   'total_google_volume',
   'intent',
+  'visibility_rate_30d',
+  'visible_runs_30d',
   'avg_visibility_30d',
   'total_mentions_30d',
   'total_citations_30d',
@@ -1125,6 +1128,8 @@ export default function PromptsPage() {
       est_ai_volume: volumeByPromptId.get(p.id)?.estAiVolume ?? '',
       total_google_volume: volumeByPromptId.get(p.id)?.totalGoogleVolume ?? '',
       intent: volumeByPromptId.get(p.id)?.intent ?? '',
+      visibility_rate_30d: visibility[p.id]?.visibilityRate ?? '',
+      visible_runs_30d: visibility[p.id]?.visibleRuns ?? '',
       avg_visibility_30d: visibility[p.id]?.avgVisibility ?? '',
       total_mentions_30d: visibility[p.id]?.totalMentions ?? '',
       total_citations_30d: visibility[p.id]?.totalCitations ?? '',
@@ -1741,13 +1746,15 @@ function AllPromptsTab({
       const vol = volumeByPromptId.get(p.id);
       switch (activeSort) {
         case 'visibility':
-          return vis ? vis.avgVisibility : null;
+          return vis ? vis.visibilityRate : null;
         case 'mentions':
           return vis ? vis.totalMentions : null;
         case 'citations':
           return vis ? vis.totalCitations : null;
         case 'volume':
           return vol ? vol.estAiVolume : null;
+        case 'runs':
+          return vis ? vis.runs : null;
         case 'lastRun':
           return vis?.lastRunAt ? new Date(vis.lastRunAt).getTime() : null;
       }
@@ -1851,7 +1858,7 @@ function AllPromptsTab({
               </ColHead>
               <SortableHead
                 className="text-right"
-                tooltip="Average brand visibility score in AI answers for this prompt over the last 30 days."
+                tooltip="Visibility Rate: the percentage of AI answers for this prompt (last 30 days) that mentioned or cited the brand. Hover a value for run counts and the average score across visible answers."
                 sortKey="visibility"
                 activeSort={activeSort}
                 dir={dir}
@@ -1895,6 +1902,16 @@ function AllPromptsTab({
               >
                 Competition
               </ColHead>
+              <SortableHead
+                className="text-right"
+                tooltip="Number of tracking runs for this prompt over the last 30 days (one per platform per day)."
+                sortKey="runs"
+                activeSort={activeSort}
+                dir={dir}
+                onSort={handleSort}
+              >
+                Runs
+              </SortableHead>
               <SortableHead
                 className="text-right"
                 tooltip="Most recent tracking run for this prompt."
@@ -1963,23 +1980,30 @@ function AllPromptsTab({
                   </TableCell>
                   <TableCell className="text-right">
                     {vis ? (
-                      <div className="inline-flex items-center gap-2 justify-end min-w-[110px]">
+                      <div
+                        className="inline-flex items-center gap-2 justify-end min-w-[110px]"
+                        title={`Appeared in ${vis.visibleRuns} of ${vis.runs} runs (30d)${
+                          vis.avgVisibilityVisible !== null
+                            ? ` · avg score when visible: ${vis.avgVisibilityVisible.toFixed(0)}`
+                            : ''
+                        }`}
+                      >
                         <span
                           className={cn(
                             'text-sm font-semibold tabular-nums',
-                            visibilityColorClass(vis.avgVisibility),
+                            visibilityColorClass(vis.visibilityRate),
                           )}
                         >
-                          {vis.avgVisibility.toFixed(0)}
+                          {vis.visibilityRate}
                         </span>
                         <div className="h-1.5 w-16 rounded-full bg-muted overflow-hidden">
                           <div
                             className={cn(
                               'h-full rounded-full',
-                              visibilityBarClass(vis.avgVisibility),
+                              visibilityBarClass(vis.visibilityRate),
                             )}
                             style={{
-                              width: `${Math.min(100, Math.max(0, vis.avgVisibility))}%`,
+                              width: `${Math.min(100, Math.max(0, vis.visibilityRate))}%`,
                             }}
                           />
                         </div>
@@ -2016,6 +2040,13 @@ function AllPromptsTab({
                         label={vol?.competition ?? null}
                       />
                     </div>
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums text-sm">
+                    {vis ? (
+                      vis.runs.toLocaleString()
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-right text-xs text-muted-foreground">
                     {formatRelative(vis?.lastRunAt)}
