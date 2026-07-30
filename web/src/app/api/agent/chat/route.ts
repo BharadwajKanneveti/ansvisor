@@ -95,6 +95,7 @@ export async function POST(req: Request) {
 
   const result = streamText({
     model: buildAgentModel(anthropicKey),
+    maxOutputTokens: 16000,
     system: buildAgentSystemPrompt(new Date()),
     messages: await convertToModelMessages(messages),
     tools: buildAgentTools(auth),
