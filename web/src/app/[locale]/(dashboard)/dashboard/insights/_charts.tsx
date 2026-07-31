@@ -15,14 +15,18 @@ import {
   Cell,
   BarChart,
   Bar,
+  LineChart,
+  Line,
 } from 'recharts';
 import type {
   CompetitorComparisonEntry,
   ProviderComparisonRow,
   VisibilityTrendPoint,
+  VisibilityRateTrendData,
   SoVByPlatform,
   SoVTrendPoint,
 } from '@/lib/actions/tracking';
+import { getFaviconUrl } from '@/lib/favicon';
 
 // ─── Adaptive Y-axis ─────────────────────────────────────────────────────────
 // Visibility scores are theoretically 0–100 but realistic values for most
@@ -382,6 +386,217 @@ function CompetitorTooltip({
             <span className="font-medium text-foreground">{entry.value}%</span>
           </div>
         ))}
+    </div>
+  );
+}
+
+// ─── Visibility Rate trend (one line per brand, logo at the line's end) ──────
+
+// 5 lines total, matching the leaderboard: the own brand + top 4 competitors.
+// Fixed color order across the five lines: green (own brand), then navy,
+// purple, orange, red for the competitors by rate.
+const RATE_TREND_PALETTE = ['#1e3a8a', '#a855f7', '#f97316', '#ef4444'];
+const RATE_TREND_MAX_COMPETITORS = 4;
+const OWN_BRAND_COLOR = '#22c55e';
+
+/** Circle-clipped logo rendered on a line's last data point. */
+function LogoDot(props: {
+  cx?: number;
+  cy?: number;
+  index?: number;
+  lastIndex: number;
+  color: string;
+  logoUrl: string;
+  entityKey: string;
+  dimmed?: boolean;
+}) {
+  const { cx, cy, index, lastIndex, color, logoUrl, entityKey, dimmed } = props;
+  if (index !== lastIndex || cx == null || cy == null) return <g />;
+  const r = 11;
+  const clipId = `rate-trend-logo-${entityKey}`;
+  return (
+    <g opacity={dimmed ? 0.25 : 1}>
+      <defs>
+        <clipPath id={clipId}>
+          <circle cx={cx} cy={cy} r={r - 2.5} />
+        </clipPath>
+      </defs>
+      <circle cx={cx} cy={cy} r={r} fill="#ffffff" stroke={color} strokeWidth={2} />
+      <image
+        href={logoUrl}
+        x={cx - (r - 2.5)}
+        y={cy - (r - 2.5)}
+        width={(r - 2.5) * 2}
+        height={(r - 2.5) * 2}
+        clipPath={`url(#${clipId})`}
+        preserveAspectRatio="xMidYMid slice"
+      />
+    </g>
+  );
+}
+
+export function VisibilityRateTrendChart({ data }: { data: VisibilityRateTrendData }) {
+  const { entities, points } = data;
+  // Hovering a line (or its legend entry) brings it forward and dims the rest.
+  const [hoveredKey, setHoveredKey] = useState<string | null>(null);
+
+  if (points.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-[280px] text-sm text-muted-foreground">
+        No visibility data for this period yet
+      </div>
+    );
+  }
+
+  // Own brand always plots; competitors capped by period-average rate so a
+  // long roster doesn't turn the chart into spaghetti.
+  const avgRate = (key: string) =>
+    points.reduce((sum, p) => sum + (p.values[key] ?? 0), 0) / points.length;
+  const shown = [
+    ...entities.filter((e) => e.isOwnBrand),
+    ...entities
+      .filter((e) => !e.isOwnBrand)
+      .sort((a, b) => avgRate(b.key) - avgRate(a.key))
+      .slice(0, RATE_TREND_MAX_COMPETITORS),
+  ].map((entity, i) => ({
+    ...entity,
+    // Own brand is index 0, so competitor #1 (highest rate) starts the
+    // palette at navy.
+    color: entity.isOwnBrand
+      ? OWN_BRAND_COLOR
+      : RATE_TREND_PALETTE[(i - 1) % RATE_TREND_PALETTE.length],
+    logoUrl: entity.logoUrl ?? (entity.domain ? getFaviconUrl(entity.domain, 64) : ''),
+  }));
+
+  const chartData = points.map((p) => ({ date: p.date, ...p.values }));
+  const lastIndex = points.length - 1;
+
+  // Y axis ticks run 5, 15, 25, … and the top one sits just above the
+  // highest rate in view (60% peak → axis ends at 65%), so the lines use
+  // the full canvas instead of being squashed under an always-100% scale.
+  const dataMax = Math.max(0, ...shown.flatMap((e) => points.map((p) => p.values[e.key] ?? 0)));
+  let yTop = 5;
+  while (yTop <= dataMax) yTop += 10;
+  const yTicks: number[] = [];
+  for (let tick = 5; tick <= yTop; tick += 10) yTicks.push(tick);
+
+  return (
+    <div className="flex flex-col gap-3">
+      <ChartContainer height={320}>
+        {(width) => (
+          <LineChart
+            width={width}
+            height={320}
+            data={chartData}
+            margin={{ top: 8, right: 26, left: -24, bottom: 0 }}
+          >
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 11 }}
+              tickLine={false}
+              axisLine={false}
+              className="fill-muted-foreground"
+            />
+            <YAxis
+              domain={[0, yTop]}
+              ticks={yTicks}
+              tick={{ fontSize: 11 }}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(v: number) => `${v}%`}
+              className="fill-muted-foreground"
+            />
+            <Tooltip
+              isAnimationActive={false}
+              content={({ active, payload, label }) => {
+                if (!active || !payload?.length) return null;
+                const ordered = [...payload].sort(
+                  (a, b) => ((b.value as number) ?? 0) - ((a.value as number) ?? 0),
+                );
+                return (
+                  <div className="rounded-lg border bg-background px-3 py-2 shadow-md text-xs">
+                    <p className="font-medium text-foreground mb-1">{label}</p>
+                    {ordered.map((entry) => {
+                      const entity = shown.find((e) => e.key === entry.dataKey);
+                      if (!entity) return null;
+                      return (
+                        <div key={entity.key} className="flex items-center gap-2">
+                          <span
+                            className="inline-block h-2 w-2 rounded-full shrink-0"
+                            style={{ backgroundColor: entity.color }}
+                          />
+                          <span className="text-muted-foreground">{entity.name}:</span>
+                          <span className="font-medium text-foreground">{entry.value}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              }}
+            />
+            {/* Render order = z-order: lines are drawn lowest-rate first so
+                when end-of-line logos overlap, the higher rate sits on top.
+                A hovered line always wins. */}
+            {[...shown]
+              .sort((a, b) => {
+                if (a.key === hoveredKey) return 1;
+                if (b.key === hoveredKey) return -1;
+                return (
+                  (points[lastIndex]?.values[a.key] ?? 0) - (points[lastIndex]?.values[b.key] ?? 0)
+                );
+              })
+              .map((entity) => {
+                const dimmed = hoveredKey !== null && hoveredKey !== entity.key;
+                return (
+                  <Line
+                    key={entity.key}
+                    type="monotone"
+                    dataKey={entity.key}
+                    stroke={entity.color}
+                    strokeOpacity={dimmed ? 0.15 : 1}
+                    strokeWidth={entity.key === hoveredKey ? 3 : entity.isOwnBrand ? 2.5 : 1.5}
+                    isAnimationActive={false}
+                    onMouseEnter={() => setHoveredKey(entity.key)}
+                    onMouseLeave={() => setHoveredKey(null)}
+                    dot={
+                      <LogoDot
+                        lastIndex={lastIndex}
+                        color={entity.color}
+                        logoUrl={entity.logoUrl}
+                        entityKey={entity.key}
+                        dimmed={dimmed}
+                      />
+                    }
+                    activeDot={{ r: 3 }}
+                  />
+                );
+              })}
+          </LineChart>
+        )}
+      </ChartContainer>
+
+      <ul className="flex flex-wrap justify-center gap-x-4 gap-y-1.5">
+        {shown.map((entity) => (
+          <li
+            key={entity.key}
+            className="flex cursor-default items-center gap-1.5 text-xs transition-opacity"
+            style={{
+              opacity: hoveredKey !== null && hoveredKey !== entity.key ? 0.35 : 1,
+            }}
+            onMouseEnter={() => setHoveredKey(entity.key)}
+            onMouseLeave={() => setHoveredKey(null)}
+          >
+            <span
+              className="h-2.5 w-2.5 shrink-0 rounded-sm"
+              style={{ background: entity.color }}
+              aria-hidden
+            />
+            <span className={entity.isOwnBrand ? 'font-medium' : 'text-muted-foreground'}>
+              {entity.name}
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

@@ -7,10 +7,13 @@ import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { Skeleton } from '@/components/ui/skeleton';
-const CompetitorChart = dynamic(() => import('./_charts').then((m) => m.CompetitorChart), {
-  ssr: false,
-  loading: () => <Skeleton className="h-64 w-full" />,
-});
+const VisibilityRateTrendChart = dynamic(
+  () => import('./_charts').then((m) => m.VisibilityRateTrendChart),
+  {
+    ssr: false,
+    loading: () => <Skeleton className="h-64 w-full" />,
+  },
+);
 
 const CompetitorLeaderboard = dynamic(
   () => import('./_charts').then((m) => m.CompetitorLeaderboard),
@@ -39,6 +42,8 @@ import { MetricBreakdownSheet } from './_metric-breakdown-sheet';
 import { useBrandStore } from '@/stores/use-brand-store';
 import {
   getInsightsData,
+  getVisibilityRateTrend,
+  type VisibilityRateTrendData,
   triggerTrackingCheck,
   getJobStatus,
   cancelTrackingJob,
@@ -932,6 +937,7 @@ export default function InsightsPage() {
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [availableTopics, setAvailableTopics] = useState<Topic[]>([]);
   const [competitorData, setCompetitorData] = useState<CompetitorComparisonData | null>(null);
+  const [rateTrend, setRateTrend] = useState<VisibilityRateTrendData | null>(null);
   const [sovData, setSovData] = useState<ShareOfVoiceData | null>(null);
   const [recommendations, setRecommendations] = useState<InsightsRecommendations | null>(null);
   const [breakdownMetric, setBreakdownMetric] = useState<BreakdownMetric | null>(null);
@@ -963,10 +969,17 @@ export default function InsightsPage() {
         // run in a real server-side Promise.all (one round trip instead of
         // five serialized POSTs), and "has any data" comes from a cheap
         // count instead of an unbounded full-table scan.
-        const insights = await getInsightsData(brand.id, {
-          ...filterOpts,
-          checkUnfiltered: hasFilters,
-        });
+        // The trend chart follows the page filters exactly — same window as
+        // every other number on the page, so the headline rate never
+        // contradicts the KPI header.
+        const [insights, trend] = await Promise.all([
+          getInsightsData(brand.id, {
+            ...filterOpts,
+            checkUnfiltered: hasFilters,
+          }),
+          getVisibilityRateTrend(brand.id, filterOpts).catch(() => null),
+        ]);
+        setRateTrend(trend && trend.points.length > 0 ? trend : null);
         setSummary(insights.summary);
         setTrackedPrompts(insights.trackedPrompts);
         setVisibilityRate(insights.visibilityRate);
@@ -1478,16 +1491,61 @@ export default function InsightsPage() {
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
                   <Card className="lg:col-span-3">
                     <CardHeader className="pb-2">
-                      <CardTitle className="flex items-center gap-2 text-sm font-medium">
-                        <Users className="h-4 w-4" />
-                        AI Visibility — Brand vs Competitors
-                      </CardTitle>
+                      {rateTrend ? (
+                        <div>
+                          <div className="text-3xl font-bold tabular-nums">
+                            {rateTrend.summary.rate}%
+                          </div>
+                          <div className="mt-1 flex items-center gap-2 text-xs">
+                            {rateTrend.summary.change !== null && (
+                              <span
+                                className={cn(
+                                  'flex items-center gap-0.5 font-medium',
+                                  rateTrend.summary.change >= 0
+                                    ? 'text-emerald-600 dark:text-emerald-400'
+                                    : 'text-red-600 dark:text-red-400',
+                                )}
+                              >
+                                {rateTrend.summary.change >= 0 ? (
+                                  <TrendingUp className="h-3 w-3" />
+                                ) : (
+                                  <TrendingDown className="h-3 w-3" />
+                                )}
+                                {rateTrend.summary.change >= 0 ? '+' : ''}
+                                {rateTrend.summary.change} pts
+                              </span>
+                            )}
+                            <span className="text-muted-foreground">
+                              vs{' '}
+                              {new Date(rateTrend.summary.prevFrom).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: '2-digit',
+                                year: 'numeric',
+                              })}{' '}
+                              –{' '}
+                              {new Date(rateTrend.summary.prevTo).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: '2-digit',
+                                year: 'numeric',
+                              })}
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                          <Users className="h-4 w-4" />
+                          AI Visibility — Brand vs Competitors
+                        </CardTitle>
+                      )}
                     </CardHeader>
                     <CardContent>
-                      <CompetitorChart
-                        providerRows={competitorData.providerRows}
-                        brands={competitorData.brands}
-                      />
+                      {rateTrend ? (
+                        <VisibilityRateTrendChart data={rateTrend} />
+                      ) : (
+                        <div className="flex items-center justify-center h-[280px] text-sm text-muted-foreground">
+                          No visibility data for this period yet
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
 
