@@ -201,27 +201,23 @@ function HBar({ label, pct, value }: { label: string; pct: number; value: string
 }
 
 function PromptTable({ title, prompts }: { title: string; prompts: ReportPromptPerf[] }) {
-  // Reports generated before the rate switch stored an all-runs average score
-  // (0-100 intensity, not a percentage) — render those unchanged, without a
-  // misleading % sign.
-  const hasVisibilityRate = prompts.some((p) => typeof p.visibilityRate === 'number');
   return (
     <View style={styles.section} wrap={false}>
       <Text style={styles.sectionTitle}>{title}</Text>
       <View style={styles.tableHeader}>
         <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Prompt</Text>
-        <Text style={[styles.tableHeaderCell, { width: 60, textAlign: 'right' }]}>
-          {hasVisibilityRate ? 'Visibility Rate' : 'Visibility'}
-        </Text>
+        <Text style={[styles.tableHeaderCell, { width: 60, textAlign: 'right' }]}>Visibility</Text>
         <Text style={[styles.tableHeaderCell, { width: 40, textAlign: 'right' }]}>Runs</Text>
       </View>
       {prompts.map((p) => (
         <View key={p.text} style={styles.tableRow}>
           <Text style={[styles.cell, { flex: 1, paddingRight: 8 }]}>{p.text}</Text>
           <Text style={[styles.cell, { width: 60, textAlign: 'right' }]}>
-            {typeof p.visibilityRate === 'number'
-              ? `${p.visibilityRate}%`
-              : `${p.avgVisibility}/100`}
+            {typeof p.score === 'number'
+              ? p.score
+              : typeof p.visibilityRate === 'number'
+                ? `${p.visibilityRate}%`
+                : `${p.avgVisibility}/100`}
           </Text>
           <Text style={[styles.cell, { width: 40, textAlign: 'right', color: MUTED }]}>
             {p.runs}
@@ -260,8 +256,11 @@ export function ReportPdfDocument({ report }: { report: Report }) {
         ...(payload.visibilityRate
           ? [
               {
-                label: 'Visibility Rate',
-                value: `${payload.visibilityRate.ratePct}%`,
+                label: 'Visibility',
+                value:
+                  typeof payload.visibilityRate.score === 'number'
+                    ? String(payload.visibilityRate.score)
+                    : `${payload.visibilityRate.ratePct}%`,
                 change: null,
                 sub: `${payload.visibilityRate.visiblePrompts}/${payload.visibilityRate.promptCount} prompts`,
               },
@@ -314,11 +313,6 @@ export function ReportPdfDocument({ report }: { report: Report }) {
     payload.competitors?.length &&
     typeof payload.competitors[0].visibilityRate === 'number' &&
     typeof payload.competitors[0].promptCount === 'number',
-  );
-  // Topics switched from an all-runs average score to the rate too; older
-  // payloads keep their stored score (no % sign — it isn't one).
-  const hasTopicVisibilityRate = Boolean(
-    payload.topicPerformance?.some((tp) => typeof tp.visibilityRate === 'number'),
   );
 
   return (
@@ -407,7 +401,7 @@ export function ReportPdfDocument({ report }: { report: Report }) {
             <View style={styles.tableHeader}>
               <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Brand</Text>
               <Text style={[styles.tableHeaderCell, { width: 60, textAlign: 'right' }]}>
-                {hasCompetitorVisibilityRate ? 'Visibility Rate' : 'Visibility'}
+                Visibility
               </Text>
               <Text style={[styles.tableHeaderCell, { width: 50, textAlign: 'right' }]}>
                 Change
@@ -433,7 +427,9 @@ export function ReportPdfDocument({ report }: { report: Report }) {
                 </Text>
                 <View style={{ width: 60, alignItems: 'flex-end' }}>
                   <Text style={styles.cell}>
-                    {hasCompetitorVisibilityRate ? c.visibilityRate : c.avgVisibilityScore}%
+                    {typeof c.score === 'number'
+                      ? c.score
+                      : `${hasCompetitorVisibilityRate ? c.visibilityRate : c.avgVisibilityScore}%`}
                   </Text>
                   {hasCompetitorVisibilityRate && (
                     <Text style={styles.kpiSub}>
@@ -462,7 +458,7 @@ export function ReportPdfDocument({ report }: { report: Report }) {
             <View style={styles.tableHeader}>
               <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Topic</Text>
               <Text style={[styles.tableHeaderCell, { width: 60, textAlign: 'right' }]}>
-                {hasTopicVisibilityRate ? 'Visibility Rate' : 'Visibility'}
+                Visibility
               </Text>
               <Text style={[styles.tableHeaderCell, { width: 50, textAlign: 'right' }]}>
                 Change
@@ -475,9 +471,11 @@ export function ReportPdfDocument({ report }: { report: Report }) {
               <View key={tp.name} style={styles.tableRow}>
                 <Text style={[styles.cell, { flex: 1, paddingRight: 8 }]}>{tp.name}</Text>
                 <Text style={[styles.cell, { width: 60, textAlign: 'right' }]}>
-                  {typeof tp.visibilityRate === 'number'
-                    ? `${tp.visibilityRate}%`
-                    : `${tp.avgVisibility}/100`}
+                  {typeof tp.score === 'number'
+                    ? tp.score
+                    : typeof tp.visibilityRate === 'number'
+                      ? `${tp.visibilityRate}%`
+                      : `${tp.avgVisibility}/100`}
                 </Text>
                 <View style={{ width: 50, alignItems: 'flex-end' }}>
                   <DeltaText value={tp.change} />

@@ -247,7 +247,11 @@ export default function ReportDetailPage() {
               <>
                 <KpiCard
                   label={t('kpi.visibilityRate')}
-                  value={`${payload.visibilityRate.ratePct}%`}
+                  value={
+                    typeof payload.visibilityRate.score === 'number'
+                      ? String(payload.visibilityRate.score)
+                      : `${payload.visibilityRate.ratePct}%`
+                  }
                   change={null}
                   sub={t('kpi.visibilityRateSub', {
                     visible: payload.visibilityRate.visiblePrompts,
@@ -382,7 +386,17 @@ export default function ReportDetailPage() {
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          {hasCompetitorVisibilityRate ? (
+                          {typeof c.score === 'number' ? (
+                            <>
+                              <div>{c.score}</div>
+                              <div className="text-xs font-normal text-muted-foreground">
+                                {t('kpi.visibilityRateSub', {
+                                  visible: c.visiblePrompts,
+                                  total: c.promptCount,
+                                })}
+                              </div>
+                            </>
+                          ) : hasCompetitorVisibilityRate ? (
                             <>
                               <div>{c.visibilityRate}%</div>
                               <div className="text-xs font-normal text-muted-foreground">
@@ -434,9 +448,11 @@ export default function ReportDetailPage() {
                         {tp.name}
                       </TableCell>
                       <TableCell className="text-right">
-                        {typeof tp.visibilityRate === 'number'
-                          ? `${tp.visibilityRate}%`
-                          : `${tp.avgVisibility}/100`}
+                        {typeof tp.score === 'number'
+                          ? tp.score
+                          : typeof tp.visibilityRate === 'number'
+                            ? `${tp.visibilityRate}%`
+                            : `${tp.avgVisibility}/100`}
                       </TableCell>
                       <TableCell className="text-right">
                         <Delta value={tp.change} />
@@ -488,9 +504,11 @@ export default function ReportDetailPage() {
                                   {p.text}
                                 </TableCell>
                                 <TableCell className="text-right">
-                                  {typeof p.visibilityRate === 'number'
-                                    ? `${p.visibilityRate}%`
-                                    : `${p.avgVisibility}/100`}
+                                  {typeof p.score === 'number'
+                                    ? p.score
+                                    : typeof p.visibilityRate === 'number'
+                                      ? `${p.visibilityRate}%`
+                                      : `${p.avgVisibility}/100`}
                                 </TableCell>
                                 <TableCell className="text-right text-muted-foreground">
                                   {p.runs}
