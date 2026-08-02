@@ -14,6 +14,11 @@ RUN npm install && npm install -g pm2
 
 COPY . .
 
+# Production default — keeps prod log level at info and enables the socket
+# origin check. Note: an env_file that sets NODE_ENV overrides this, so
+# deployment .env files must not pin NODE_ENV=development.
+ENV NODE_ENV=production
+
 EXPOSE 80
 
 CMD ["pm2-runtime", "start", "src/server.js"]
