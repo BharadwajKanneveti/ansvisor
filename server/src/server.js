@@ -361,14 +361,14 @@ app.post('/api/internal/analyze-volumes', async (req, res) => {
   try {
     const { brandId } = req.body;
     if (!brandId) {
-    return res.status(400).json({ success: false, message: 'brandId is required' });
+      return res.status(400).json({ success: false, message: 'brandId is required' });
     }
 
     analyzeBrandVolumes(brandId).catch((err) => {
-    req.log.error({ err, brandId }, 'internal analyze-volumes error');
-  });
+      req.log.error({ err, brandId }, 'internal analyze-volumes error');
+    });
 
-  return res.status(202).json({success: true, message: 'Volume analysis started'});
+    return res.status(202).json({ success: true, message: 'Volume analysis started' });
   } catch (err) {
     req.log.error({ err }, 'internal analyze volume error');
     return res.status(500).json({ success: false, message: err.message });

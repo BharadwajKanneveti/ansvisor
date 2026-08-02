@@ -180,8 +180,8 @@ export async function analyzeBrandVolumes(brandId, { force = false } = {}) {
       );
       results.push(mapVolumeRow(saved));
     } catch (err) {
-      logger.error({err, promptId},'volume analysis failed for prompt');
-      
+      logger.error({ err, promptId }, 'volume analysis failed for prompt');
+
       results.push({ promptId, error: err.message });
     }
   }
