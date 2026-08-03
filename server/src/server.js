@@ -29,6 +29,7 @@ import { getSiteAuditQuotaStatus } from './lib/plan-guard.js';
 import { recountBrandCitations } from './lib/citation-recount.js';
 import supabaseAdmin from './config/supabase.js';
 import { getPlan, hasFeature, isCloud, isSubscriptionActive } from './config/plans.js';
+import { analyzeBrandVolumes } from './lib/volume-analysis.js';
 
 const app = express();
 app.set('trust proxy', 1);
@@ -346,6 +347,32 @@ app.post('/api/internal/trigger-tracking', async (req, res) => {
     return res.json({ success: true, jobId: job.id });
   } catch (err) {
     req.log.error({ err }, 'internal trigger-tracking error');
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// --- Internal analyze volumes endpoint (CRON_SECRET auth, called by Stripe success route) ---
+app.post('/api/internal/analyze-volumes', async (req, res) => {
+  const secret = req.headers.authorization?.replace('Bearer ', '');
+  if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+
+  try {
+    const { brandId } = req.body;
+    if (!brandId) {
+      return res.status(400).json({ success: false, message: 'brandId is required' });
+    }
+
+    analyzeBrandVolumes(brandId, {
+      onlyMissing: true,
+    }).catch((err) => {
+      req.log.error({ err, brandId }, 'internal analyze-volumes error');
+    });
+
+    return res.status(202).json({ success: true, message: 'Volume analysis started' });
+  } catch (err) {
+    req.log.error({ err }, 'internal analyze volume error');
     return res.status(500).json({ success: false, message: err.message });
   }
 });

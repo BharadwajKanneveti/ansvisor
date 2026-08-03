@@ -106,6 +106,28 @@ export async function GET(req: NextRequest) {
               } catch (fetchErr) {
                 console.error('[stripe/success] Failed to call trigger-tracking:', fetchErr);
               }
+
+              try {
+                const volumesRes = await fetch(`${serverUrl}/api/internal/analyze-volumes`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${cronSecret}`,
+                  },
+                  body: JSON.stringify({ brandId: brand.id }),
+                });
+
+                if (volumesRes.ok) {
+                  console.log('[stripe/success] Volume analysis triggered for brand:', brand.id);
+                } else {
+                  console.error(
+                    '[stripe/success] Volume analysis trigger failed:',
+                    volumesRes.status,
+                  );
+                }
+              } catch (fetchErr) {
+                console.error('[stripe/success] Failed to call volume analysis:', fetchErr);
+              }
             }
           }
         }
