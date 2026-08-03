@@ -32,46 +32,47 @@ export default function AuditDetailPage() {
   const [loading, setLoading] = useState(true);
   const [stage, setStage] = useState(0);
   const [timedOut, setTimedOut] = useState(false);
-  const cancelledRef = useRef(false);
+  const genRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadAndPoll = useCallback(async () => {
+    const gen = ++genRef.current;
+    const cancelled = () => genRef.current !== gen;
     try {
-      cancelledRef.current = false;
       setTimedOut(false);
 
       let result = await getAudit(id);
 
-      if (cancelledRef.current) return;
+      if (cancelled()) return;
 
       setAudit(result);
       setLoading(false);
 
       const deadline = Date.now() + 120_000;
 
-      while (!cancelledRef.current && result.status === 'running' && Date.now() < deadline) {
+      while (!cancelled() && result.status === 'running' && Date.now() < deadline) {
         await new Promise((resolve) => {
           timerRef.current = setTimeout(resolve, 3000);
         });
 
-        if (cancelledRef.current) return;
+        if (cancelled()) return;
 
         result = await getAudit(id);
 
-        if (cancelledRef.current) return;
+        if (cancelled()) return;
 
         setAudit(result);
       }
 
-      if (!cancelledRef.current && result.status === 'running' && Date.now() >= deadline) {
+      if (!cancelled() && result.status === 'running' && Date.now() >= deadline) {
         setTimedOut(true);
       }
 
-      if (!cancelledRef.current && result.status === 'failed') {
+      if (!cancelled() && result.status === 'failed') {
         toast.error(result.error || tFailed);
       }
     } catch (err) {
-      if (cancelledRef.current) return;
+      if (cancelled()) return;
 
       setLoading(false);
       toast.error(err instanceof Error ? err.message : tFailed);
@@ -86,7 +87,7 @@ export default function AuditDetailPage() {
     startPolling();
 
     return () => {
-      cancelledRef.current = true;
+      genRef.current++;
 
       if (timerRef.current) {
         clearTimeout(timerRef.current);
