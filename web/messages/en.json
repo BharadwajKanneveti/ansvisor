@@ -73,6 +73,8 @@
     "noBrand": "Select a brand first.",
     "urlRequired": "Enter a URL to audit.",
     "failed": "Audit failed. Please try again.",
+    "takingLongerThanExpected": "This audit is taking longer than expected.",
+    "checkAgain": "Check again",
     "grade": {
       "good": "Good",
       "needsWork": "Needs work",
