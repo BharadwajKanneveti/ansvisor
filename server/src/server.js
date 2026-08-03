@@ -364,7 +364,9 @@ app.post('/api/internal/analyze-volumes', async (req, res) => {
       return res.status(400).json({ success: false, message: 'brandId is required' });
     }
 
-    analyzeBrandVolumes(brandId).catch((err) => {
+    analyzeBrandVolumes(brandId, {
+      onlyMissing: true,
+    }).catch((err) => {
       req.log.error({ err, brandId }, 'internal analyze-volumes error');
     });
 

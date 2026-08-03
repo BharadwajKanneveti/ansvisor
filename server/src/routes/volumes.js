@@ -10,8 +10,7 @@ import {
 import supabaseAdmin from '../config/supabase.js';
 import { assertBrandAccess, assertPromptAccess } from '../lib/access.js';
 import { extractIntentKeywords } from '../lib/intent-extraction.js';
-import { mapVolumeRow, fetchAndSaveVolumes } from '../lib/volume-analysis.js';
-import { analyzeBrandVolumes } from '../lib/volume-analysis.js';
+import { mapVolumeRow, fetchAndSaveVolumes, analyzeBrandVolumes } from '../lib/volume-analysis.js';
 
 const router = Router();
 
@@ -118,7 +117,7 @@ router.post('/analyze-batch', requireFeature('prompt_volumes'), async (req, res)
   try {
     const { remaining, orgId } = await enforceVolumeQuota(req.user.id);
 
-    const { prompts, force } = req.body;
+    const { prompts, locationCode, languageCode, force } = req.body;
 
     if (!Array.isArray(prompts) || prompts.length === 0) {
       return res.status(400).json({ error: 'prompts array is required and must not be empty' });
@@ -150,7 +149,12 @@ router.post('/analyze-batch', requireFeature('prompt_volumes'), async (req, res)
       });
     }
 
-    const results = await analyzeBrandVolumes(brandId, { force });
+    const results = await analyzeBrandVolumes(brandId, {
+      promptIds,
+      locationCode,
+      languageCode,
+      force,
+    });
     const successCount = results.filter((r) => !r.error).length;
     if (successCount > 0 && orgId) {
       await supabaseAdmin.from('volume_usage').insert({
