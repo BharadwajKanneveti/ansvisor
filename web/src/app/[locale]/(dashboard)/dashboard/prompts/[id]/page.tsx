@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, type ComponentType } from 'react';
+import { useEffect, useMemo, useState, type ComponentType, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { Link, useRouter } from '@/i18n/navigation';
 import { buildCitationDetailHref } from '@/components/citations/filter-bar';
@@ -27,6 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import {
   ArrowLeft,
+  AlertCircle,
   ChevronDown,
   Clock,
   ExternalLink,
@@ -34,6 +35,7 @@ import {
   Loader2,
   MessageSquareText,
   Quote,
+  RotateCw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -599,6 +601,7 @@ export default function PromptDetailPage() {
   const [workStatus, setWorkStatus] = useState<PromptWorkStatus | null>(null);
   const [notes, setNotes] = useState<PromptNote[]>([]);
   const [targetUrls, setTargetUrls] = useState<PromptTargetUrl[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   // Workflow data is independent of the date window — load it once per
   // prompt, outside the main load cycle, so date changes don't refetch it.
@@ -626,10 +629,10 @@ export default function PromptDetailPage() {
     });
   };
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
+  const load = useCallback(
+    async (isCancelled?: () => boolean) => {
+      setError(null);
+      setNotFound(false);
       setLoading(true);
 
       try {
@@ -640,33 +643,44 @@ export default function PromptDetailPage() {
 
         const detail = await getPromptDetail(promptId, { dateFrom, dateTo });
 
-        if (cancelled) return;
+        if (isCancelled?.()) return;
 
         if (!detail) {
           setNotFound(true);
-        } else {
-          setData(detail);
-          const groups = groupByPlatform(detail.results);
-          setExpanded(new Set(groups.length > 0 ? [groups[0].key] : []));
+          setData(null);
+          return;
         }
+
+        setData(detail);
+
+        const groups = groupByPlatform(detail.results);
+        setExpanded(new Set(groups.length > 0 ? [groups[0].key] : []));
       } catch (err) {
-        if (cancelled) return;
+        if (isCancelled?.()) return;
 
         console.error('Failed to load prompt detail:', err);
+
+        setError(err instanceof Error ? err.message : 'Failed to load prompt detail');
+
         toast.error('Failed to load prompt detail');
       } finally {
-        if (!cancelled) {
+        if (!isCancelled?.()) {
           setLoading(false);
         }
       }
-    }
+    },
+    [promptId, datePreset, customFrom, customTo],
+  );
 
-    load();
+  useEffect(() => {
+    let cancelled = false;
+
+    void load(() => cancelled);
 
     return () => {
       cancelled = true;
     };
-  }, [promptId, datePreset, customFrom, customTo]);
+  }, [load]);
 
   const platformGroups = useMemo(() => groupByPlatform(data?.results ?? []), [data?.results]);
 
@@ -694,6 +708,27 @@ export default function PromptDetailPage() {
           <Skeleton className="h-24" />
         </div>
         <Skeleton className="h-72 w-full" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center">
+        <Card className="max-w-md">
+          <CardContent className="pt-6 text-center">
+            <AlertCircle className="mx-auto h-9 w-9 text-destructive/60" />
+
+            <h2 className="mt-3 text-base font-semibold">Couldn&apos;t load this prompt</h2>
+
+            <p className="mt-1 text-sm text-muted-foreground">{error}</p>
+
+            <Button className="mt-4 gap-2" size="sm" variant="outline" onClick={() => void load()}>
+              <RotateCw className="h-3.5 w-3.5" />
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
