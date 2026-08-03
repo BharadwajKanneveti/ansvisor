@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
@@ -31,45 +31,69 @@ export default function AuditDetailPage() {
   const [audit, setAudit] = useState<AuditResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [stage, setStage] = useState(0);
+  const [timedOut, setTimedOut] = useState(false);
+  const genRef = useRef(0);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load the audit and poll while it's still running.
-  useEffect(() => {
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout>;
+  const loadAndPoll = useCallback(async () => {
+    const gen = ++genRef.current;
+    const cancelled = () => genRef.current !== gen;
+    try {
+      setTimedOut(false);
 
-    async function loadAndPoll() {
-      try {
-        let result = await getAudit(id);
-        if (cancelled) return;
+      let result = await getAudit(id);
+
+      if (cancelled()) return;
+
+      setAudit(result);
+      setLoading(false);
+
+      const deadline = Date.now() + 120_000;
+
+      while (!cancelled() && result.status === 'running' && Date.now() < deadline) {
+        await new Promise((resolve) => {
+          timerRef.current = setTimeout(resolve, 3000);
+        });
+
+        if (cancelled()) return;
+
+        result = await getAudit(id);
+
+        if (cancelled()) return;
+
         setAudit(result);
-        setLoading(false);
-
-        const deadline = Date.now() + 120_000;
-        while (!cancelled && result.status === 'running' && Date.now() < deadline) {
-          await new Promise((r) => {
-            timer = setTimeout(r, 3000);
-          });
-          if (cancelled) return;
-          result = await getAudit(id);
-          if (cancelled) return;
-          setAudit(result);
-        }
-        if (!cancelled && result.status === 'failed') {
-          toast.error(result.error || tFailed);
-        }
-      } catch (err) {
-        if (cancelled) return;
-        setLoading(false);
-        toast.error(err instanceof Error ? err.message : tFailed);
       }
-    }
 
-    loadAndPoll();
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
+      if (!cancelled() && result.status === 'running' && Date.now() >= deadline) {
+        setTimedOut(true);
+      }
+
+      if (!cancelled() && result.status === 'failed') {
+        toast.error(result.error || tFailed);
+      }
+    } catch (err) {
+      if (cancelled()) return;
+
+      setLoading(false);
+      toast.error(err instanceof Error ? err.message : tFailed);
+    }
   }, [id, tFailed]);
+
+  useEffect(() => {
+    const startPolling = async () => {
+      await loadAndPoll();
+    };
+
+    startPolling();
+
+    return () => {
+      genRef.current++;
+
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, [loadAndPoll]);
 
   // Advance the running-state stage label so the ~30s wait reads as progress.
   const isRunning = !audit || audit.status === 'running';
@@ -108,7 +132,7 @@ export default function AuditDetailPage() {
         >
           <ArrowLeft className="h-4 w-4" /> {t('title')}
         </Link>
-        {audit && audit.status !== 'running' && (
+        {audit && (audit.status !== 'running' || timedOut) && (
           <div className="flex items-center gap-1">
             <Button
               variant="ghost"
@@ -149,14 +173,28 @@ export default function AuditDetailPage() {
         )}
       </div>
 
-      {loading || (audit && audit.status === 'running') ? (
+      {loading ? (
+        <Card>
+          <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            <div className="text-sm font-medium">{t('stages.fetch')}</div>
+            <div className="text-xs text-muted-foreground">~30s</div>
+          </CardContent>
+        </Card>
+      ) : audit && audit.status === 'running' && timedOut ? (
+        <Card>
+          <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
+            <div className="text-sm font-medium">{t('takingLongerThanExpected')}</div>
+
+            <Button onClick={loadAndPoll}>{t('checkAgain')}</Button>
+          </CardContent>
+        </Card>
+      ) : audit && audit.status === 'running' ? (
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
             <div className="text-sm font-medium">
-              {loading
-                ? t('stages.fetch')
-                : [t('stages.fetch'), t('stages.analyze'), t('stages.recommend')][stage]}
+              {[t('stages.fetch'), t('stages.analyze'), t('stages.recommend')][stage]}
             </div>
             <div className="text-xs text-muted-foreground">~30s</div>
           </CardContent>
