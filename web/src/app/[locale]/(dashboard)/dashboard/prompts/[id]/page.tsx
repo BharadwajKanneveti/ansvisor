@@ -628,21 +628,41 @@ export default function PromptDetailPage() {
 
   useEffect(() => {
     let cancelled = false;
+
     async function load() {
       setLoading(true);
-      const { dateFrom, dateTo } = getDateRange(datePreset, { from: customFrom, to: customTo });
-      const detail = await getPromptDetail(promptId, { dateFrom, dateTo });
-      if (cancelled) return;
-      if (!detail) {
-        setNotFound(true);
-      } else {
-        setData(detail);
-        const groups = groupByPlatform(detail.results);
-        setExpanded(new Set(groups.length > 0 ? [groups[0].key] : []));
+
+      try {
+        const { dateFrom, dateTo } = getDateRange(datePreset, {
+          from: customFrom,
+          to: customTo,
+        });
+
+        const detail = await getPromptDetail(promptId, { dateFrom, dateTo });
+
+        if (cancelled) return;
+
+        if (!detail) {
+          setNotFound(true);
+        } else {
+          setData(detail);
+          const groups = groupByPlatform(detail.results);
+          setExpanded(new Set(groups.length > 0 ? [groups[0].key] : []));
+        }
+      } catch (err) {
+        if (cancelled) return;
+
+        console.error('Failed to load prompt detail:', err);
+        toast.error('Failed to load prompt detail');
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
-      setLoading(false);
     }
+
     load();
+
     return () => {
       cancelled = true;
     };
