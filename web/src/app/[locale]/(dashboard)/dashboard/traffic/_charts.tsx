@@ -96,6 +96,16 @@ export function getPlatformName(platform: string): string {
   return PLATFORM_NAMES[platform] ?? platform;
 }
 
+function formatTrafficBucketDate(value: string): string {
+  const d = new Date(value);
+
+  return d.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
 // ─── Custom Tooltips ──────────────────────────────────────────────────────────
 
 function AreaTooltip({
@@ -110,7 +120,9 @@ function AreaTooltip({
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-lg border bg-background px-3 py-2 shadow-md text-xs">
-      <p className="font-medium text-foreground mb-1">{label}</p>
+      <p className="font-medium text-foreground mb-1">
+        {label ? formatTrafficBucketDate(label) : ''}
+      </p>
       {payload.map((entry) => (
         <div key={entry.name} className="flex items-center gap-2">
           <span
@@ -207,10 +219,7 @@ export function ReferralTrendChart({ data }: { data: TrafficTrendPoint[] }) {
             tickLine={false}
             axisLine={false}
             className="fill-muted-foreground"
-            tickFormatter={(v: string) => {
-              const d = new Date(v);
-              return d.toLocaleDateString('en', { month: 'short', day: 'numeric' });
-            }}
+            tickFormatter={(v: string) => formatTrafficBucketDate(v)}
           />
           <YAxis
             tick={{ fontSize: 11 }}
