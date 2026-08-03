@@ -45,6 +45,7 @@ function mapPromptRow(row: Record<string, unknown>): Prompt {
     promptSetId: row.prompt_set_id as string,
     text: row.text as string,
     category: (row.category as string | null) ?? undefined,
+    topicId: (row.topic_id as string | null) ?? undefined,
     platforms: ((row.platforms as string[]) ?? []) as AIPlatform[],
     regions: (row.regions as string[]) ?? [],
     models: (row.models as string[]) ?? [],
