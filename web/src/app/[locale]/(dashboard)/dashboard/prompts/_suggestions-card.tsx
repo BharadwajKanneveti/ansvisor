@@ -128,7 +128,11 @@ export function SuggestionsCard({ brandId, onAccepted }: Props) {
     setPendingId(s.id);
     startTransition(async () => {
       try {
-        await acceptSuggestion(s.id);
+        const result = await acceptSuggestion(s.id);
+        if ('error' in result) {
+          toast.error(result.error);
+          return;
+        }
         setSuggestions((prev) => prev.filter((x) => x.id !== s.id));
         onAccepted?.();
         toast.success('Prompt added to your tracked list');

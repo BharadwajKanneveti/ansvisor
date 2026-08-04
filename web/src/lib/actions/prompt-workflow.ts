@@ -105,10 +105,12 @@ export async function setPromptWorkStatus(
   if (error) throw new Error(error.message);
 }
 
-export async function addPromptNote(promptId: string, body: string): Promise<PromptNote> {
+export type AddPromptNoteResult = { note: PromptNote } | { error: string };
+
+export async function addPromptNote(promptId: string, body: string): Promise<AddPromptNoteResult> {
   const trimmed = body.trim();
-  if (!trimmed) throw new Error('Note cannot be empty');
-  if (trimmed.length > 2000) throw new Error('Note is too long (max 2000 characters)');
+  if (!trimmed) return { error: 'Note cannot be empty' };
+  if (trimmed.length > 2000) return { error: 'Note is too long (max 2000 characters)' };
 
   const supabase = await createClient();
   const {
@@ -120,16 +122,18 @@ export async function addPromptNote(promptId: string, body: string): Promise<Pro
     .insert({ prompt_id: promptId, body: trimmed, author_id: user?.id ?? null })
     .select('id, prompt_id, body, created_at, profiles(full_name)')
     .single();
-  if (error) throw new Error(error.message);
+  if (error) return { error: error.message };
 
   const r = data as unknown as Record<string, unknown>;
   const profile = r.profiles as { full_name: string | null } | null;
   return {
-    id: r.id as string,
-    promptId: r.prompt_id as string,
-    body: r.body as string,
-    authorName: profile?.full_name ?? null,
-    createdAt: r.created_at as string,
+    note: {
+      id: r.id as string,
+      promptId: r.prompt_id as string,
+      body: r.body as string,
+      authorName: profile?.full_name ?? null,
+      createdAt: r.created_at as string,
+    },
   };
 }
 
@@ -232,16 +236,18 @@ async function backfillCitedStats(
   return { citedCount, firstCitedAt, lastCitedAt };
 }
 
+export type AddPromptTargetUrlResult = { targetUrl: PromptTargetUrl } | { error: string };
+
 export async function addPromptTargetUrl(
   promptId: string,
   url: string,
   label?: string,
-): Promise<PromptTargetUrl> {
+): Promise<AddPromptTargetUrlResult> {
   let normalized: string;
   try {
     normalized = normalizeTargetUrl(url);
   } catch {
-    throw new Error('Enter a valid URL');
+    return { error: 'Enter a valid URL' };
   }
 
   const supabase = await createClient();
@@ -260,13 +266,21 @@ export async function addPromptTargetUrl(
     .select('id, prompt_id, url, label, created_at, cited_count, first_cited_at, last_cited_at')
     .single();
   if (error) {
-    if (error.code === '23505') throw new Error('This URL is already targeted for this prompt');
-    throw new Error(error.message);
+    if (error.code === '23505') {
+      return { error: 'This URL is already targeted for this prompt' };
+    }
+
+    return { error: error.message };
   }
 
   const mapped = mapTargetUrlRow(data as unknown as Record<string, unknown>);
   const stats = await backfillCitedStats(supabase, promptId, mapped.id, mapped.url);
-  return { ...mapped, ...stats };
+  return {
+    targetUrl: {
+      ...mapped,
+      ...stats,
+    },
+  };
 }
 
 export async function deletePromptTargetUrl(id: string): Promise<void> {
