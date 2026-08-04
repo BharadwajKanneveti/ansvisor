@@ -110,8 +110,12 @@ export function NotesCard({
     if (!body) return;
     setSaving(true);
     try {
-      const note = await addPromptNote(promptId, body);
-      onNotesChange([note, ...notes]);
+      const result = await addPromptNote(promptId, body);
+      if ('error' in result) {
+        toast.error(result.error);
+        return;
+      }
+      onNotesChange([result.note, ...notes]);
       setDraft('');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to add note');
@@ -152,9 +156,12 @@ export function NotesCard({
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               rows={2}
+              maxLength={2000}
               className="text-sm"
             />
-            <div className="flex justify-end">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">{draft.length}/2000</p>
+
               <Button
                 size="sm"
                 className="gap-2"
@@ -217,14 +224,19 @@ export function TargetUrlsCard({
 }) {
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
+  const [urlError, setUrlError] = useState<string | null>(null);
 
   const handleAdd = useCallback(async () => {
     const value = draft.trim();
     if (!value) return;
     setSaving(true);
     try {
-      const added = await addPromptTargetUrl(promptId, value);
-      onUrlsChange([...urls, added]);
+      const result = await addPromptTargetUrl(promptId, value);
+      if ('error' in result) {
+        setUrlError(result.error);
+        return;
+      }
+      onUrlsChange([...urls, result.targetUrl]);
       setDraft('');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to add URL');
@@ -264,7 +276,10 @@ export function TargetUrlsCard({
             <Input
               placeholder="https://example.com/blog/comparison-post"
               value={draft}
-              onChange={(e) => setDraft(e.target.value)}
+              onChange={(e) => {
+                setDraft(e.target.value);
+                setUrlError(null);
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
@@ -287,6 +302,7 @@ export function TargetUrlsCard({
               )}
               Add
             </Button>
+            {urlError && <p className="text-xs text-destructive">{urlError}</p>}
           </div>
         )}
         {urls.length === 0 ? (

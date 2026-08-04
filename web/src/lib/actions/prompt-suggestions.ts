@@ -112,10 +112,12 @@ export async function dismissSuggestion(suggestionId: string): Promise<{ success
   return res.json();
 }
 
+export type AcceptSuggestionResult = { promptId: string } | { error: string };
+
 export async function acceptSuggestion(
   suggestionId: string,
   options?: { platforms?: string[]; models?: string[] },
-): Promise<{ promptId: string }> {
+): Promise<AcceptSuggestionResult> {
   const session = await getSession();
   const supabase = await createClient();
 
@@ -126,7 +128,7 @@ export async function acceptSuggestion(
     .eq('status', 'new')
     .single();
   if (rowErr || !row) {
-    throw new Error('Suggestion not found or already processed');
+    return { error: 'Suggestion not found or already processed' };
   }
 
   const { data: ps, error: psErr } = await supabase
@@ -137,7 +139,7 @@ export async function acceptSuggestion(
     .limit(1)
     .maybeSingle();
   if (psErr || !ps) {
-    throw new Error('No prompt set exists for this brand. Create one first.');
+    return { error: 'No prompt set exists for this brand. Create one first.' };
   }
 
   const { data: defaults } = await supabase
@@ -165,7 +167,7 @@ export async function acceptSuggestion(
     models,
   });
   if ('error' in result) {
-    throw new Error(result.error);
+    return { error: result.error };
   }
   const created = result.prompt;
 
