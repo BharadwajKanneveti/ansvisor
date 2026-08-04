@@ -286,6 +286,7 @@ export type Database = {
           created_at: string;
           description: string | null;
           id: string;
+          gsc_property: string | null;
           industry: string | null;
           is_active: boolean;
           language: string | null;
@@ -303,6 +304,7 @@ export type Database = {
           created_at?: string;
           description?: string | null;
           id?: string;
+          gsc_property?: string | null;
           industry?: string | null;
           is_active?: boolean;
           language?: string | null;
@@ -320,6 +322,7 @@ export type Database = {
           created_at?: string;
           description?: string | null;
           id?: string;
+          gsc_property?: string | null;
           industry?: string | null;
           is_active?: boolean;
           language?: string | null;
@@ -437,6 +440,50 @@ export type Database = {
             columns: ['prompt_id'];
             isOneToOne: false;
             referencedRelation: 'prompts';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      gsc_query_stats: {
+        Row: {
+          brand_id: string;
+          clicks: number;
+          created_at: string;
+          ctr: number;
+          date: string;
+          id: string;
+          impressions: number;
+          position: number;
+          query: string;
+        };
+        Insert: {
+          brand_id: string;
+          clicks?: number;
+          created_at?: string;
+          ctr?: number;
+          date: string;
+          id?: string;
+          impressions?: number;
+          position?: number;
+          query: string;
+        };
+        Update: {
+          brand_id?: string;
+          clicks?: number;
+          created_at?: string;
+          ctr?: number;
+          date?: string;
+          id?: string;
+          impressions?: number;
+          position?: number;
+          query?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'gsc_query_stats_brand_id_fkey';
+            columns: ['brand_id'];
+            isOneToOne: false;
+            referencedRelation: 'brands';
             referencedColumns: ['id'];
           },
         ];
