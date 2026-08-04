@@ -240,7 +240,12 @@ function AgentChat(props: {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({}),
     });
-    if (!res.ok) return;
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+
+      toast.error(body?.error ?? 'Failed to create chat');
+      return;
+    }
     const { conversation } = (await res.json()) as { conversation: ConversationRow };
     setConversations((prev) => [conversation, ...prev]);
     setActiveId(conversation.id);
@@ -251,7 +256,12 @@ function AgentChat(props: {
   async function deleteConversation(id: string) {
     if (!confirm(t('deleteConfirm'))) return;
     const res = await fetch(`/api/agent/conversations/${id}`, { method: 'DELETE' });
-    if (!res.ok) return;
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+
+      toast.error(body?.error ?? 'Failed to delete conversation');
+      return;
+    }
     setConversations((prev) => prev.filter((c) => c.id !== id));
     if (activeId === id) {
       setActiveId(null);
@@ -276,15 +286,24 @@ function AgentChat(props: {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+
+        toast.error(body?.error ?? 'Failed to create conversation');
+        return;
+      }
       const { conversation } = (await res.json()) as { conversation: ConversationRow };
       setConversations((prev) => [conversation, ...prev]);
       setActiveId(conversation.id);
       activeIdRef.current = conversation.id;
       convId = conversation.id;
     }
-    sendMessage({ text }, { body: { conversationId: convId } });
-    setInput('');
+    try {
+      await sendMessage({ text }, { body: { conversationId: convId } });
+      setInput('');
+    } catch {
+      toast.error('Failed to send message');
+    }
   }
 
   return (
