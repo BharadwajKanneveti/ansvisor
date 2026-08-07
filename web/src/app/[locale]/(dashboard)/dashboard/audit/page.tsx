@@ -175,7 +175,7 @@ export default function SiteAuditPage() {
   if (!activeBrandId) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-muted-foreground">Select a brand to view site audits.</p>
+        <p className="text-muted-foreground">{t('noBrand')}</p>
       </div>
     );
   }
@@ -211,7 +211,7 @@ export default function SiteAuditPage() {
                       : 'bg-card text-foreground hover:bg-muted',
                   )}
                 >
-                  {p === 'all' ? 'All' : p}
+                  {p === 'all' ? t('all') : p}
                 </button>
               ))}
             </div>
@@ -273,7 +273,7 @@ export default function SiteAuditPage() {
                     <div className="mb-1 flex items-center justify-between text-xs">
                       <span className="font-medium">{cat.label}</span>
                       <span className="text-muted-foreground tabular-nums">
-                        {p === null ? 'n/a' : `${p}/100`}
+                        {p === null ? t('na') : `${p}/100`}
                       </span>
                     </div>
                     <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
@@ -355,7 +355,7 @@ export default function SiteAuditPage() {
             <p className="max-w-md text-sm text-muted-foreground">{error}</p>
             <Button variant="outline" size="sm" onClick={refetch}>
               <RefreshCw className="mr-2 h-4 w-4" />
-              Retry
+              {t('retry')}
             </Button>
           </CardContent>
         </Card>
@@ -392,7 +392,9 @@ export default function SiteAuditPage() {
                       scoreColor(h.total_score),
                     )}
                   >
-                    {h.status === 'completed' ? (pct(h.total_score) ?? '—') : h.status}
+                    {h.status === 'completed'
+                      ? (pct(h.total_score) ?? '—')
+                      : t(`status.${h.status}`)}
                   </span>
                 </Link>
                 <Button

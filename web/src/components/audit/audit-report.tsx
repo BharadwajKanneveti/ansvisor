@@ -106,10 +106,11 @@ export function ScoreGauge({ score }: { score: number | null }) {
 }
 
 function DraftBlock({ draft }: { draft: string }) {
+  const t = useTranslations('audit');
   const copy = () => {
     navigator.clipboard.writeText(draft).then(
-      () => toast.success('Copied'),
-      () => toast.error('Copy failed'),
+      () => toast.success(t('copied')),
+      () => toast.error(t('copyFailed')),
     );
   };
   return (
@@ -119,7 +120,7 @@ function DraftBlock({ draft }: { draft: string }) {
         size="icon"
         className="absolute right-1 top-1 h-7 w-7"
         onClick={copy}
-        aria-label="Copy draft"
+        aria-label={t('copyDraft')}
       >
         <Copy className="h-3.5 w-3.5" />
       </Button>
@@ -139,6 +140,7 @@ function SignalRow({
 }) {
   const [open, setOpen] = useState(false);
   const Icon = STATUS_ICON[signal.status] ?? Minus;
+  const t = useTranslations('audit');
 
   return (
     <div className="border-b last:border-b-0">
@@ -170,14 +172,14 @@ function SignalRow({
         >
           {typeof signal.evidence?.reason === 'string' && signal.evidence.reason && (
             <p>
-              <span className="font-medium text-foreground">Finding: </span>
+              <span className="font-medium text-foreground">{t('finding')}: </span>
               {signal.evidence.reason as string}
             </p>
           )}
           {signal.what && <p>{signal.what}</p>}
           {signal.why && (
             <p>
-              <span className="font-medium text-foreground">Why: </span>
+              <span className="font-medium text-foreground">{t('why')}: </span>
               {signal.why}
             </p>
           )}
@@ -187,7 +189,7 @@ function SignalRow({
             <div className="space-y-2">
               <p>
                 <span className="inline-flex items-center gap-1 font-medium text-primary">
-                  <Sparkles className="h-3.5 w-3.5" /> Recommended fix:
+                  <Sparkles className="h-3.5 w-3.5" /> {t('recommendedFix')}:
                 </span>{' '}
                 {recommendation.recommendation}
               </p>
@@ -197,7 +199,7 @@ function SignalRow({
             signal.status !== 'pass' &&
             signal.howToFix && (
               <p>
-                <span className="font-medium text-foreground">Fix: </span>
+                <span className="font-medium text-foreground">{t('fix')}: </span>
                 {signal.howToFix}
               </p>
             )
@@ -272,7 +274,7 @@ export function AuditReport({ audit }: { audit: AuditResult }) {
               </span>
             </div>
             <div className="text-xs text-muted-foreground">
-              {audit.signalsEvaluated}/{audit.signalsTotal} signals evaluated
+              {audit.signalsEvaluated}/{audit.signalsTotal} {t('signalsEvaluated')}
             </div>
           </div>
         </CardContent>
@@ -284,7 +286,7 @@ export function AuditReport({ audit }: { audit: AuditResult }) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Sparkles className="h-4 w-4 text-primary" />
-              AI Recommendations
+              {t('aiRecommendations')}
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
@@ -300,7 +302,7 @@ export function AuditReport({ audit }: { audit: AuditResult }) {
       {/* Category breakdown */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Category breakdown</CardTitle>
+          <CardTitle className="text-base">{t('categoryBreakdown')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {CATEGORY_META.map((cat) => {
@@ -330,7 +332,7 @@ export function AuditReport({ audit }: { audit: AuditResult }) {
 
       {/* Signals header + issues-only filter */}
       <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold">Signals</h2>
+        <h2 className="text-base font-semibold">{t('signals')}</h2>
         <Button variant="outline" size="sm" onClick={() => setOnlyIssues((v) => !v)}>
           {onlyIssues ? t('allSignals') : t('onlyIssues')}
         </Button>
