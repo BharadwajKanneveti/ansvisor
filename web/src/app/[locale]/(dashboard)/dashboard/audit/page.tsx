@@ -166,6 +166,7 @@ export default function SiteAuditPage() {
     setHistory((h) => h.filter((a) => a.id !== id));
     try {
       await deleteAudit(id);
+      refetch();
     } catch (err) {
       setHistory(prev);
       toast.error(err instanceof Error ? err.message : t('failed'));
