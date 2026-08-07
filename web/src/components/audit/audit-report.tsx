@@ -147,6 +147,7 @@ function SignalRow({
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center gap-3 py-3 text-left hover:bg-muted/40"
         aria-expanded={open}
+        aria-controls={`signal-panel-${signal.key}`}
       >
         <Icon className={cn('h-4 w-4 shrink-0', STATUS_COLOR[signal.status])} />
         <span className="flex-1 text-sm font-medium">{signal.label}</span>
@@ -163,7 +164,10 @@ function SignalRow({
         />
       </button>
       {open && (
-        <div className="space-y-2 pb-4 pl-7 text-sm text-muted-foreground">
+        <div
+          id={`signal-panel-${signal.key}`}
+          className="space-y-2 pb-4 pl-7 text-sm text-muted-foreground"
+        >
           {typeof signal.evidence?.reason === 'string' && signal.evidence.reason && (
             <p>
               <span className="font-medium text-foreground">Finding: </span>
