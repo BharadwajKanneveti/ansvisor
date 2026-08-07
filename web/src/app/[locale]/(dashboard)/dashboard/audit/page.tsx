@@ -203,6 +203,7 @@ export default function SiteAuditPage() {
                   key={p}
                   type="button"
                   onClick={() => setRange(p)}
+                  aria-pressed={range === p}
                   className={cn(
                     'px-2.5 py-1 text-xs font-medium transition-colors',
                     range === p
@@ -296,6 +297,7 @@ export default function SiteAuditPage() {
             type="url"
             inputMode="url"
             placeholder="https://example.com/page"
+            aria-label="Website URL"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !running && !quotaExhausted && handleRun()}
