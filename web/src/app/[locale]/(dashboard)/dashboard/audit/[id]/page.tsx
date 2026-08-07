@@ -34,6 +34,7 @@ export default function AuditDetailPage() {
   const [timedOut, setTimedOut] = useState(false);
   const genRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [rerunning, setRerunning] = useState(false);
 
   const loadAndPoll = useCallback(async () => {
     const gen = ++genRef.current;
@@ -115,11 +116,15 @@ export default function AuditDetailPage() {
   // Re-run the audit on the same URL → navigate to the new audit's detail page.
   const handleRefresh = async () => {
     if (!audit) return;
+    setRerunning(true);
+
     try {
       const started = await runAudit(audit.brandId, audit.url);
       router.push(`/dashboard/audit/${started.id}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : tFailed);
+    } finally {
+      setRerunning(false);
     }
   };
 
@@ -138,10 +143,15 @@ export default function AuditDetailPage() {
               variant="ghost"
               size="icon"
               className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              disabled={rerunning}
               onClick={handleRefresh}
               aria-label={t('reaudit')}
             >
-              <RefreshCw className="h-3.5 w-3.5" />
+              {rerunning ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5" />
+              )}
             </Button>
             <Dialog>
               <DialogTrigger
