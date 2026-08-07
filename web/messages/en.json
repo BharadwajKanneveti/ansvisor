@@ -229,8 +229,10 @@
     "generate": "Generate Opportunities",
     "regenerate": "Refresh Opportunities",
     "generating": "Analyzing...",
+    "send": "Send",
     "sendToWorkflow": "Send to Workflow",
     "sending": "Sending...",
+    "noResults": "No opportunities match your filters.",
     "dismiss": "Dismiss",
     "viewDetails": "View Details",
     "configureWebhook": "Configure Webhook",
@@ -258,7 +260,11 @@
       "total": "Total Opportunities",
       "highImpact": "High Impact",
       "sentToWorkflow": "Sent to Workflow",
-      "avgScore": "Avg. Score"
+      "avgScore": "Avg. Score",
+      "shown": "{count} shown",
+      "opportunities": "opportunities",
+      "outOf100": "out of 100",
+      "sentOrInProgress": "sent or in progress"
     },
     "filters": {
       "allStatuses": "All Statuses",
