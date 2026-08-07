@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useCallback, useTransition } from 'react';
+import { useEffect, useState, useCallback, useTransition, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,7 @@ import {
   ChevronDown,
   ChevronRight,
   AlertTriangle,
+  SearchCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -24,7 +26,71 @@ import {
   acceptSuggestion,
   dismissSuggestion,
   type PromptSuggestion,
+  type GscSuggestionBadge,
 } from '@/lib/actions/prompt-suggestions';
+
+const GSC_BADGES: Record<GscSuggestionBadge, { label: string; tooltip: string }> = {
+  protect_traffic: {
+    label: 'Protect traffic',
+    tooltip:
+      'This query drives real clicks to your site today. People increasingly ask AI assistants the same questions — track it so AI answers don\u2019t erode traffic you already earn.',
+  },
+  capture_demand: {
+    label: 'Capture demand',
+    tooltip:
+      'People search this heavily on Google and you appear in results, but almost nobody clicks through. Being cited in AI answers is a second chance to capture this proven demand.',
+  },
+  low_competition: {
+    label: 'Low competition',
+    tooltip:
+      'Advertiser competition on this term is low \u2014 becoming the answer AI assistants cite is a cheap win here.',
+  },
+};
+
+/**
+ * Portal-based hover/focus tooltip (same pattern as the Insights InfoTip) —
+ * native title attributes are delayed and unreliable, which read as broken.
+ */
+function HoverTip({ content, children }: { content: string; children: React.ReactNode }) {
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const ref = useRef<HTMLSpanElement>(null);
+
+  function show() {
+    const r = ref.current?.getBoundingClientRect();
+    if (r) setPos({ x: r.left + r.width / 2, y: r.bottom + 6 });
+  }
+  const hide = () => setPos(null);
+
+  return (
+    <>
+      <span
+        ref={ref}
+        tabIndex={0}
+        className="inline-flex cursor-help rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        onMouseEnter={show}
+        onMouseLeave={hide}
+        onFocus={show}
+        onBlur={hide}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') hide();
+        }}
+      >
+        {children}
+      </span>
+      {pos &&
+        createPortal(
+          <div
+            role="tooltip"
+            style={{ left: pos.x, top: pos.y, transform: 'translateX(-50%)' }}
+            className="pointer-events-none fixed z-[9999] w-64 rounded-md border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md"
+          >
+            {content}
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+}
 
 interface Props {
   brandId: string;
@@ -273,10 +339,34 @@ export function SuggestionsCard({ brandId, onAccepted }: Props) {
                             {s.topicName}
                           </Badge>
                         )}
-                        {s.estVolume != null && s.estVolume > 0 && (
+                        {/* GSC rows carry real impressions — showing the modeled
+                            estimate next to measured data reads as a contradiction. */}
+                        {s.estVolume != null && s.estVolume > 0 && s.source !== 'gsc' && (
                           <Badge variant="outline" className="gap-1 text-xs tabular-nums">
                             <TrendingUp className="h-3 w-3" />~{s.estVolume.toLocaleString()}/mo
                           </Badge>
+                        )}
+                        {s.source === 'gsc' && s.sourceData && (
+                          <>
+                            <HoverTip
+                              content={`From your Google Search Console data \u2014 the query "${s.sourceData.query}" got ${s.sourceData.impressions.toLocaleString()} impressions in the last 28 days.`}
+                            >
+                              <Badge
+                                variant="outline"
+                                className="gap-1 text-xs border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                              >
+                                <SearchCheck className="h-3 w-3" />
+                                Search Console · {s.sourceData.impressions.toLocaleString()} impr/mo
+                              </Badge>
+                            </HoverTip>
+                            {s.sourceData.badge && (
+                              <HoverTip content={GSC_BADGES[s.sourceData.badge].tooltip}>
+                                <Badge variant="outline" className="text-xs">
+                                  {GSC_BADGES[s.sourceData.badge].label}
+                                </Badge>
+                              </HoverTip>
+                            )}
+                          </>
                         )}
                       </div>
                       {s.reason && (
