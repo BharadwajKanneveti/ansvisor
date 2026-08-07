@@ -121,7 +121,14 @@ export default function SiteAuditPage() {
   const dailyPoints = useMemo(() => {
     const byDay = new Map<string, (typeof rangePoints)[number]>();
     for (const p of rangePoints) {
-      byDay.set(new Date(p.createdAt).toISOString().slice(0, 10), p);
+      const date = new Date(p.createdAt);
+      const localDay = [
+        date.getFullYear(),
+        String(date.getMonth() + 1).padStart(2, '0'),
+        String(date.getDate()).padStart(2, '0'),
+      ].join('-');
+
+      byDay.set(localDay, p);
     }
     return [...byDay.values()];
   }, [rangePoints]);
