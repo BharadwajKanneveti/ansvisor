@@ -202,19 +202,18 @@ export default function AuditDetailPage() {
         <Card className="border-destructive/50 bg-destructive/5">
           <CardContent className="flex flex-col items-center gap-3 py-8 text-center">
             <AlertCircle className="h-8 w-8 text-destructive" />
-            <div className="text-base font-semibold">Couldn&apos;t load this audit</div>
+            <div className="text-base font-semibold">{t('loadFailed')}</div>
             <p className="max-w-md text-sm text-muted-foreground">{error}</p>
             <Button variant="outline" size="sm" onClick={() => void loadAndPoll()}>
               <RefreshCw className="mr-2 h-4 w-4" />
-              Retry
+              {t('retry')}
             </Button>
           </CardContent>
         </Card>
       ) : audit && audit.status === 'running' && timedOut ? (
         <Card>
-          <CardContent className="py-12 text-center">
-            {t('takingLongerThanExpected')}
-
+          <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
+            <div className="text-sm font-medium">{t('takingLongerThanExpected')}</div>
             <Button onClick={() => void loadAndPoll()}>{t('checkAgain')}</Button>
           </CardContent>
         </Card>
