@@ -168,7 +168,7 @@ export default function ContentPage() {
   const pager = usePagination(total, `${statusFilter}|${impactFilter}|${typeFilter}`);
 
   const loadData = useCallback(
-    async (silent = false) => {
+    async (silent = false, isCancelled?: () => boolean) => {
       if (!activeBrandId) {
         setOpportunities([]);
         setTotal(0);
@@ -190,6 +190,7 @@ export default function ContentPage() {
           offset: pager.start,
           sort: 'score',
         });
+        if (isCancelled?.()) return;
         setOpportunities(data.opportunities);
         setTotal(data.total);
         return data.total;
@@ -198,14 +199,22 @@ export default function ContentPage() {
         toast.error('Failed to load content opportunities');
         return 0;
       } finally {
-        setLoading(false);
+        if (!isCancelled?.()) {
+          setLoading(false);
+        }
       }
     },
     [activeBrandId, statusFilter, impactFilter, typeFilter, pager.start],
   );
 
   useEffect(() => {
-    loadData();
+    let cancelled = false;
+
+    loadData(false, () => cancelled);
+
+    return () => {
+      cancelled = true;
+    };
   }, [loadData]);
 
   const pollJob = useCallback(
