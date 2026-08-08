@@ -141,7 +141,7 @@ router.get('/brand/:brandId', async (req, res) => {
     if (type) query = query.eq('type', type);
 
     if (q) {
-      const search = String(q).replace(/([,()])/g, '\\$1');
+      const search = String(q).replace(/[,()]/g, ' ');
       query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
     }
 
