@@ -9,7 +9,7 @@ import {
   getInsightsSummary,
   getShareOfVoiceData,
   getCompetitorComparison,
-  getVisibilityTrend,
+  getVisibilityRateTrend,
   getVisibilityRateKpi,
   getTrackedPromptsKpi,
   type InsightsSummary,
@@ -988,7 +988,7 @@ export async function createReport(
     has('citations')
       ? getCitationsOverview(brandId, { datePreset: 'custom', dateFrom, dateTo })
       : null,
-    has('trend') ? getVisibilityTrend(brandId, range) : null,
+    has('trend') ? getVisibilityRateTrend(brandId, range) : null,
     has('promptPerformance') ? getPromptPerformance(brandId, dateFrom, dateTo) : null,
     has('mentionEvidence') ? getMentionEvidence(brandId, brandName, dateFrom, dateTo) : null,
     has('citationEvidence') ? getCitationEvidence(brandId, dateFrom, dateTo) : null,
@@ -999,11 +999,33 @@ export async function createReport(
     has('auditScore') ? getAuditSnapshot(brandId, dateTo) : null,
   ]);
 
+  // Adapt VisibilityRateTrendData → VisibilityTrendPoint[] so the report
+  // payload's visibilityTrend field stays array-shaped. Existing report
+  // snapshots are immutable, so only new reports use the new formula.
+  const visibilityTrend: VisibilityTrendPoint[] | null = trend
+    ? (() => {
+        const competitorKeys = trend.entities.filter((e) => !e.isOwnBrand).map((e) => e.key);
+        return trend.points.map((pt) => {
+          const compScores = competitorKeys
+            .map((k) => pt.values[k])
+            .filter((v): v is number => v !== undefined);
+          return {
+            date: pt.date,
+            score: pt.values['you'] ?? 0,
+            competitors:
+              compScores.length > 0
+                ? round1(compScores.reduce((a, b) => a + b, 0) / compScores.length)
+                : null,
+          };
+        });
+      })()
+    : null;
+
   const snapshot: Omit<ReportPayload, 'summaryText'> = {
     brandName,
     ...(insights ? { insights } : {}),
     ...(visibilityRate ? { visibilityRate } : {}),
-    ...(trend ? { visibilityTrend: trend } : {}),
+    ...(visibilityTrend ? { visibilityTrend } : {}),
     ...(promptPerformance ? { promptPerformance } : {}),
     ...(mentionEvidence && mentionEvidence.length > 0 ? { mentionEvidence } : {}),
     ...(citationEvidence && citationEvidence.length > 0 ? { citationEvidence } : {}),

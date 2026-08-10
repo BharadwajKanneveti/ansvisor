@@ -2085,104 +2085,6 @@ export interface VisibilityTrendPoint {
  * Fetch daily visibility score trend for a brand (and avg competitor score).
  * Queries ALL prompt_results (not deduplicated) to build a time-series.
  */
-export async function getVisibilityTrend(
-  brandId: string,
-  opts?: {
-    model?: string;
-    region?: string;
-    dateFrom?: string;
-    dateTo?: string;
-    topicId?: string;
-  },
-): Promise<VisibilityTrendPoint[]> {
-  const supabase = await createClient();
-
-  // #155 — visibility trend; exclude chatgpt-shopping to match the
-  // aggregate RPCs. (The RPC variant in 00012_shopping_mode.sql is what
-  // most callers hit; this JS path is used by the older codepath.)
-  let query = supabase
-    .from('prompt_results')
-    .select('created_at, visibility_score, competitor_mentions')
-    .eq('brand_id', brandId)
-    .neq('platform', 'chatgpt-shopping')
-    .order('created_at', { ascending: true });
-
-  query = applyModelFilter(query, opts?.model);
-  if (opts?.region) query = query.eq('region', opts.region);
-  if (opts?.dateFrom) query = query.gte('created_at', opts.dateFrom);
-  const expandedDateTo = expandDateToEndOfDay(opts?.dateTo);
-  if (expandedDateTo) query = query.lte('created_at', expandedDateTo);
-
-  if (opts?.topicId) {
-    const { data: topicPrompts } = await supabase
-      .from('prompts')
-      .select('id')
-      .eq('topic_id', opts.topicId);
-    const ids = ((topicPrompts ?? []) as { id: string }[]).map((p) => p.id);
-    query = query.in('prompt_id', ids.length > 0 ? ids : ['00000000-0000-0000-0000-000000000000']);
-  }
-
-  const { data, error } = await query;
-  if (error) throw new Error(error.message);
-  if (!data || data.length === 0) return [];
-
-  const rows = data as Record<string, unknown>[];
-
-  // Group by day (YYYY-MM-DD)
-  const dayMap = new Map<
-    string,
-    {
-      totalScore: number;
-      count: number;
-      compTotalScore: number;
-      compCount: number;
-    }
-  >();
-
-  for (const row of rows) {
-    const day = (row.created_at as string).slice(0, 10);
-    const entry = dayMap.get(day) ?? {
-      totalScore: 0,
-      count: 0,
-      compTotalScore: 0,
-      compCount: 0,
-    };
-    entry.totalScore += row.visibility_score as number;
-    entry.count += 1;
-
-    const mentions = (row.competitor_mentions as CompetitorMention[] | null) ?? [];
-    for (const cm of mentions) {
-      entry.compTotalScore += cm.visibility_score;
-      entry.compCount += 1;
-    }
-
-    dayMap.set(day, entry);
-  }
-
-  const points: VisibilityTrendPoint[] = [];
-  const sortedDays = [...dayMap.keys()].sort();
-
-  for (const day of sortedDays) {
-    const d = dayMap.get(day)!;
-    const dateObj = new Date(day + 'T00:00:00');
-    const label = dateObj.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-    });
-
-    points.push({
-      date: label,
-      // One decimal, not integer rounding: realistic daily averages for a
-      // low-visibility brand sit in the 0.3–1.5 band (see the sub-1 note on
-      // getInsightsSummary), and Math.round crushed the whole window into a
-      // flat "1" line on the chart.
-      score: roundTo1(d.totalScore / d.count),
-      competitors: d.compCount > 0 ? roundTo1(d.compTotalScore / d.compCount) : null,
-    });
-  }
-
-  return points;
-}
 
 // ─── Visibility Rate trend (brand + each competitor) ────────────────────────
 
@@ -3028,14 +2930,34 @@ export interface TopicDetailData {
  * Output is identical to the old per-call results — this is a perf refactor.
  */
 export async function getTopicDetail(brandId: string, topicId: string): Promise<TopicDetailData> {
-  const [topic, summary, trend, sov, competitors, results] = await Promise.all([
+  const [topic, summary, rateTrend, sov, competitors, results] = await Promise.all([
     getTopicById(brandId, topicId),
     getInsightsSummary(brandId, { topicId }),
-    getVisibilityTrend(brandId, { topicId }),
+    // #685 — use the new-formula RPC so the trend sits on the same 0-100 scale
+    // as the headline AI Visibility Score. getVisibilityTrend averaged raw
+    // visibility_score over all answers (incl. 0-scored absent-brand rows).
+    getVisibilityRateTrend(brandId, { topicId }),
     getShareOfVoiceData(brandId, { topicId }),
     getCompetitorComparison(brandId, { topicId }),
     getPromptResults(brandId, { topicId, limit: 50 }),
   ]);
+
+  // Adapt VisibilityRateTrendData → VisibilityTrendPoint[] so topic_charts.tsx
+  // keeps its existing VisibilityTrendPoint shape without modification.
+  const competitorKeys = rateTrend.entities.filter((e) => !e.isOwnBrand).map((e) => e.key);
+  const trend: VisibilityTrendPoint[] = rateTrend.points.map((pt) => {
+    const compScores = competitorKeys
+      .map((k) => pt.values[k])
+      .filter((v): v is number => v !== undefined);
+    return {
+      date: pt.date,
+      score: pt.values['you'] ?? 0,
+      competitors:
+        compScores.length > 0
+          ? roundTo1(compScores.reduce((a, b) => a + b, 0) / compScores.length)
+          : null,
+    };
+  });
 
   return { topic, summary, trend, sov, competitors, results: results.results };
 }
