@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Topics: sortable leaderboard columns (#620)
 - Exports: CSV for the AI Traffic visit log (#607, #630) and for Competitor Gaps, with an explanation for the intentionally disabled Source Types export (#601, #629)
 - Prompts: a citations column on the All Prompts table (#534), engine icons in the fan-out queries table (#542), a search box on the fan-out High frequency view (#593, #615), and pagination plus search on Top Sources (#530, #533)
-- Content Optimization: server-side pagination on the opportunities list (#610, #633)
+- Content Optimization: server-side pagination on the opportunities list (#610, #633), and search now queries the whole filtered set server-side instead of only the loaded page — so a match on page 3 stops reading as "no results" (#664, #681)
 - Billing: prompt volume analysis is triggered automatically after checkout (#582)
 
 ### Changed
