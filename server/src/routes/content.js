@@ -131,9 +131,6 @@ router.get('/brand/:brandId', async (req, res) => {
     const { brandId } = req.params;
     const { status, impact, type, q, limit = 50, offset = 0, sort = 'score' } = req.query;
 
-    /*
-     * Apply the filters that define the dataset.
-     */
     const applyFilters = (query) => {
       let filteredQuery = query.eq('brand_id', brandId);
 
@@ -158,7 +155,6 @@ router.get('/brand/:brandId', async (req, res) => {
       return filteredQuery;
     };
 
-    // Paginated data query.
     let dataQuery = supabaseAdmin.from('content_opportunities').select('*', { count: 'exact' });
 
     dataQuery = applyFilters(dataQuery);
@@ -175,84 +171,40 @@ router.get('/brand/:brandId', async (req, res) => {
 
     dataQuery = dataQuery.range(Number(offset), Number(offset) + Number(limit) - 1);
 
-    // Aggregate queries use the same filters without pagination.
-
-    // Average score across the entire filtered dataset.
-    let avgScoreQuery = supabaseAdmin
-      .from('content_opportunities')
-      .select('opportunity_score.avg()');
-
-    avgScoreQuery = applyFilters(avgScoreQuery);
-
-    // High-impact count across the entire filtered dataset.
-    let highImpactCount = 0;
-
-    let highImpactQuery = supabaseAdmin.from('content_opportunities').select('id', {
-      count: 'exact',
-      head: true,
+    const aggregateQuery = supabaseAdmin.rpc('content_opportunity_aggregates', {
+      p_brand_id: brandId,
+      p_status: status ? String(status) : null,
+      p_impact: impact ? String(impact) : null,
+      p_type: type ? String(type) : null,
+      p_q: q ? String(q) : null,
     });
 
-    if (!impact || impact === 'high') {
-      highImpactQuery = applyFilters(highImpactQuery);
-
-      if (!impact) {
-        highImpactQuery = highImpactQuery.eq('impact', 'high');
-      }
-    }
-
-    // Sent count across the entire filtered dataset.
-    let sentQuery = supabaseAdmin.from('content_opportunities').select('id', {
-      count: 'exact',
-      head: true,
-    });
-
-    sentQuery = applyFilters(sentQuery);
-
-    sentQuery = sentQuery.in('status', ['sent', 'in_progress', 'done']);
-
-    const [
-      { data, error: dataError, count },
-      { data: avgData, error: avgError },
-      { error: highImpactError, count: highImpactResult },
-      { error: sentError, count: sentCount },
-    ] = await Promise.all([
-      dataQuery,
-      avgScoreQuery,
-      !impact || impact === 'high' ? highImpactQuery : Promise.resolve({ error: null, count: 0 }),
-      sentQuery,
-    ]);
+    const [{ data, error: dataError, count }, { data: aggregateData, error: aggregateError }] =
+      await Promise.all([dataQuery, aggregateQuery]);
 
     if (dataError) {
       throw new Error(dataError.message);
     }
 
-    if (avgError) {
-      throw new Error(avgError.message);
+    if (aggregateError) {
+      throw new Error(aggregateError.message);
     }
 
-    if (highImpactError) {
-      throw new Error(highImpactError.message);
-    }
-
-    if (sentError) {
-      throw new Error(sentError.message);
-    }
-
-    highImpactCount = highImpactResult ?? 0;
-
-    const avgScore = Math.round(avgData?.[0]?.avg || 0);
+    const aggregates = aggregateData?.[0] ?? {
+      avg_score: 0,
+      high_impact_count: 0,
+      sent_count: 0,
+    };
 
     return res.json({
       opportunities: (data || []).map(mapOpportunityRow),
 
-      // Total number of rows matching the filters.
       total: count || 0,
 
-      // Metrics for the entire filtered dataset.
       aggregates: {
-        avgScore,
-        highImpactCount,
-        sentCount: sentCount || 0,
+        avgScore: Math.round(Number(aggregates.avg_score) || 0),
+        highImpactCount: Number(aggregates.high_impact_count) || 0,
+        sentCount: Number(aggregates.sent_count) || 0,
       },
     });
   } catch (error) {
@@ -264,6 +216,7 @@ router.get('/brand/:brandId', async (req, res) => {
     });
   }
 });
+
 /**
  * POST /api/content/bulk/status
  * Update the status of multiple opportunities at once.

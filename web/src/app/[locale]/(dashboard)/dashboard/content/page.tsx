@@ -211,7 +211,13 @@ export default function ContentPage() {
         if (isCancelled?.()) return;
         setOpportunities(data.opportunities);
         setTotal(data.total);
-        setAggregates(data.aggregates);
+        setAggregates(
+          data.aggregates ?? {
+            avgScore: 0,
+            highImpactCount: 0,
+            sentCount: 0,
+          },
+        );
         return data.total;
       } catch (err) {
         console.error('Failed to load opportunities:', err);
