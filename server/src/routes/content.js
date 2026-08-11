@@ -131,45 +131,139 @@ router.get('/brand/:brandId', async (req, res) => {
     const { brandId } = req.params;
     const { status, impact, type, q, limit = 50, offset = 0, sort = 'score' } = req.query;
 
-    let query = supabaseAdmin
-      .from('content_opportunities')
-      .select('*', { count: 'exact' })
-      .eq('brand_id', brandId);
+    /*
+     * Apply the filters that define the dataset.
+     */
+    const applyFilters = (query) => {
+      let filteredQuery = query.eq('brand_id', brandId);
 
-    if (status) query = query.eq('status', status);
-    if (impact) query = query.eq('impact', impact);
-    if (type) query = query.eq('type', type);
+      if (status) {
+        filteredQuery = filteredQuery.eq('status', status);
+      }
 
-    if (q) {
-      const search = String(q).replace(/[,()]/g, ' ');
-      query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
-    }
+      if (impact) {
+        filteredQuery = filteredQuery.eq('impact', impact);
+      }
+
+      if (type) {
+        filteredQuery = filteredQuery.eq('type', type);
+      }
+
+      if (q) {
+        const search = String(q).replace(/[,()]/g, ' ');
+
+        filteredQuery = filteredQuery.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
+      }
+
+      return filteredQuery;
+    };
+
+    // Paginated data query.
+    let dataQuery = supabaseAdmin.from('content_opportunities').select('*', { count: 'exact' });
+
+    dataQuery = applyFilters(dataQuery);
 
     if (sort === 'score') {
-      query = query.order('opportunity_score', { ascending: false });
+      dataQuery = dataQuery.order('opportunity_score', {
+        ascending: false,
+      });
     } else if (sort === 'newest') {
-      query = query.order('created_at', { ascending: false });
+      dataQuery = dataQuery.order('created_at', {
+        ascending: false,
+      });
     }
 
-    query = query.range(Number(offset), Number(offset) + Number(limit) - 1);
+    dataQuery = dataQuery.range(Number(offset), Number(offset) + Number(limit) - 1);
 
-    const { data, error, count } = await query;
+    // Aggregate queries use the same filters without pagination.
 
-    if (error) throw new Error(error.message);
+    // Average score across the entire filtered dataset.
+    let avgScoreQuery = supabaseAdmin
+      .from('content_opportunities')
+      .select('opportunity_score.avg()');
+
+    avgScoreQuery = applyFilters(avgScoreQuery);
+
+    // High-impact count across the entire filtered dataset.
+    let highImpactCount = 0;
+
+    let highImpactQuery = supabaseAdmin.from('content_opportunities').select('id', {
+      count: 'exact',
+      head: true,
+    });
+
+    if (!impact || impact === 'high') {
+      highImpactQuery = applyFilters(highImpactQuery);
+
+      if (!impact) {
+        highImpactQuery = highImpactQuery.eq('impact', 'high');
+      }
+    }
+
+    // Sent count across the entire filtered dataset.
+    let sentQuery = supabaseAdmin.from('content_opportunities').select('id', {
+      count: 'exact',
+      head: true,
+    });
+
+    sentQuery = applyFilters(sentQuery);
+
+    sentQuery = sentQuery.in('status', ['sent', 'in_progress', 'done']);
+
+    const [
+      { data, error: dataError, count },
+      { data: avgData, error: avgError },
+      { error: highImpactError, count: highImpactResult },
+      { error: sentError, count: sentCount },
+    ] = await Promise.all([
+      dataQuery,
+      avgScoreQuery,
+      !impact || impact === 'high' ? highImpactQuery : Promise.resolve({ error: null, count: 0 }),
+      sentQuery,
+    ]);
+
+    if (dataError) {
+      throw new Error(dataError.message);
+    }
+
+    if (avgError) {
+      throw new Error(avgError.message);
+    }
+
+    if (highImpactError) {
+      throw new Error(highImpactError.message);
+    }
+
+    if (sentError) {
+      throw new Error(sentError.message);
+    }
+
+    highImpactCount = highImpactResult ?? 0;
+
+    const avgScore = Math.round(avgData?.[0]?.avg || 0);
 
     return res.json({
       opportunities: (data || []).map(mapOpportunityRow),
+
+      // Total number of rows matching the filters.
       total: count || 0,
+
+      // Metrics for the entire filtered dataset.
+      aggregates: {
+        avgScore,
+        highImpactCount,
+        sentCount: sentCount || 0,
+      },
     });
   } catch (error) {
     req.log.error({ err: error }, 'list opportunities error');
+
     return res.status(500).json({
       error: 'Failed to list opportunities',
       details: error.message,
     });
   }
 });
-
 /**
  * POST /api/content/bulk/status
  * Update the status of multiple opportunities at once.

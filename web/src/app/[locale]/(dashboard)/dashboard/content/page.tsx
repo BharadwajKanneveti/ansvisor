@@ -163,6 +163,11 @@ export default function ContentPage() {
   const [webhookOpen, setWebhookOpen] = useState(false);
   const pollRef = useRef(false);
   const [debouncedSearch, setDebouncedSearch] = useState(search);
+  const [aggregates, setAggregates] = useState({
+    avgScore: 0,
+    highImpactCount: 0,
+    sentCount: 0,
+  });
 
   // Server-side paging (#610) — the list can hold far more than one page's
   // worth of opportunities, so `total` (the exact server count) drives the
@@ -177,6 +182,11 @@ export default function ContentPage() {
       if (!activeBrandId) {
         setOpportunities([]);
         setTotal(0);
+        setAggregates({
+          avgScore: 0,
+          highImpactCount: 0,
+          sentCount: 0,
+        });
         setLoading(false);
         return;
       }
@@ -201,6 +211,7 @@ export default function ContentPage() {
         if (isCancelled?.()) return;
         setOpportunities(data.opportunities);
         setTotal(data.total);
+        setAggregates(data.aggregates);
         return data.total;
       } catch (err) {
         console.error('Failed to load opportunities:', err);
@@ -408,15 +419,6 @@ export default function ContentPage() {
       (o.description || '').toLowerCase().includes(search.toLowerCase()),
   );
 
-  const highImpact = opportunities.filter((o) => o.impact === 'high').length;
-  const sentCount = opportunities.filter(
-    (o) => o.status === 'sent' || o.status === 'in_progress' || o.status === 'done',
-  ).length;
-  const avgScore =
-    opportunities.length > 0
-      ? Math.round(opportunities.reduce((s, o) => s + o.opportunityScore, 0) / opportunities.length)
-      : 0;
-
   if (!activeBrandId) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -500,19 +502,19 @@ export default function ContentPage() {
             <KpiCard
               title={t('kpi.highImpact')}
               icon={Zap}
-              value={highImpact}
+              value={aggregates.highImpactCount}
               sub={t('kpi.opportunities')}
             />
             <KpiCard
               title={t('kpi.avgScore')}
               icon={BarChart3}
-              value={avgScore}
+              value={aggregates.avgScore}
               sub={t('kpi.outOf100')}
             />
             <KpiCard
               title={t('kpi.sentToWorkflow')}
               icon={Send}
-              value={sentCount}
+              value={aggregates.sentCount}
               sub={t('kpi.sentOrInProgress')}
             />
           </div>
