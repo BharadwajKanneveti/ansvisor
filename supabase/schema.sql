@@ -5148,3 +5148,4 @@ GRANT EXECUTE ON FUNCTION public.content_opportunity_aggregates(
   text,
   text
 ) TO authenticated;
+
