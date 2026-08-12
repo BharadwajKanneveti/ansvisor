@@ -131,6 +131,7 @@ router.get('/brand/:brandId', async (req, res) => {
     const { brandId } = req.params;
     const { status, impact, type, q, limit = 50, offset = 0, sort = 'score' } = req.query;
 
+    const search = q ? String(q).replace(/[,()]/g, ' ') : null;
     const applyFilters = (query) => {
       let filteredQuery = query.eq('brand_id', brandId);
 
@@ -147,8 +148,6 @@ router.get('/brand/:brandId', async (req, res) => {
       }
 
       if (q) {
-        const search = String(q).replace(/[,()]/g, ' ');
-
         filteredQuery = filteredQuery.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
       }
 
@@ -176,7 +175,7 @@ router.get('/brand/:brandId', async (req, res) => {
       p_status: status ? String(status) : null,
       p_impact: impact ? String(impact) : null,
       p_type: type ? String(type) : null,
-      p_q: q ? String(q) : null,
+      p_q: search,
     });
 
     const [{ data, error: dataError, count }, { data: aggregateData, error: aggregateError }] =
