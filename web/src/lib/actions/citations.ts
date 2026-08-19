@@ -25,9 +25,6 @@ export interface CitationsFilters {
   topicIds?: string[];
   promptIds?: string[];
   regions?: string[];
-  excludeOwnDomain?: boolean;
-  competitorOnly?: boolean;
-  ownOnly?: boolean;
 }
 
 export interface CitationArticleTypeCount {
@@ -291,10 +288,6 @@ export async function getCitationsOverview(
         category = classifyDomain(host, classifyCtx);
         domainClassificationCache.set(host, category);
       }
-
-      if (filters.excludeOwnDomain && category === 'you') continue;
-      if (filters.competitorOnly && category !== 'competitor') continue;
-      if (filters.ownOnly && category !== 'you') continue;
 
       totalCitations += 1;
 
