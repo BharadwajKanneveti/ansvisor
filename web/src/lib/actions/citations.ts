@@ -308,61 +308,6 @@ export async function getCitationsOverview(
     .filter(Boolean);
   const classifyCtx = { brandDomains, competitorDomains };
 
-  // 3+4. Page through the filtered window (see scanFilteredResults) and
-  // aggregate in memory batch by batch.
-  interface OverviewResultRow {
-    id: string;
-    prompt_id: string;
-    platform: string | null;
-    model_used: string | null;
-    region: string | null;
-    created_at: string;
-    citations: Citation[] | null;
-  }
-  interface DomainAgg {
-    domain: string;
-    category: SourceCategory;
-    totalCitations: number;
-    resultsCiting: Set<string>;
-    models: Set<string>;
-    articleTypeCounts: Map<string, number>;
-  }
-  interface UrlAgg {
-    url: string;
-    domain: string;
-    category: SourceCategory;
-    title: string;
-    totalCitations: number;
-    resultsCiting: Set<string>;
-    models: Set<string>;
-    articleType: string | null;
-  }
-
-  const domainMap = new Map<string, DomainAgg>();
-  const urlMap = new Map<string, UrlAgg>();
-
-  const domainClassificationCache = new Map<string, SourceCategory>();
-  const articleTypeCache = new Map<string, ArticleType | null>();
-
-  let totalCitations = 0;
-  const regionsSeen = new Set<string>();
-
-  const aggregateResult = (result: OverviewResultRow) => {
-    const citations = Array.isArray(result.citations) ? result.citations : [];
-    const modelKey = result.model_used || result.platform || '';
-
-    for (const cite of citations) {
-      const host = extractHostname(cite.url);
-      if (!host) continue;
-
-      let category = domainClassificationCache.get(host);
-
-      if (category === undefined) {
-        category = classifyDomain(host, classifyCtx);
-        domainClassificationCache.set(host, category);
-      }
-
-      totalCitations += 1;
   const args = overviewArgs(brandId, filters, topicPromptIds);
 
   // In parallel: the three are independent, and the slowest decides the wait.
@@ -389,22 +334,11 @@ export async function getCitationsOverview(
     return category;
   };
 
-  // Scope filters apply to aggregated rows rather than to citations, which is
-  // exact: a domain's category is a property of the domain, so filtering after
-  // the rollup keeps every count identical to filtering before it.
-  const keep = (category: SourceCategory) => {
-    if (filters.excludeOwnDomain && category === 'you') return false;
-    if (filters.competitorOnly && category !== 'competitor') return false;
-    if (filters.ownOnly && category !== 'you') return false;
-    return true;
-  };
-
   const usagePct = (resultsCiting: number) =>
     totalResults > 0 ? Math.round((resultsCiting / totalResults) * 1000) / 10 : 0;
 
   const rows: CitationDomainRow[] = ((domainRes.data as DomainAggRow[] | null) ?? [])
     .map((row) => ({ row, category: categoryOf(row.domain) }))
-    .filter(({ category }) => keep(category))
     .map(({ row, category }) => {
       const resultsCiting = Number(row.results_citing);
       const totalCitations = Number(row.total_citations);
@@ -425,7 +359,6 @@ export async function getCitationsOverview(
   const urlRowsRaw = (urlRes.data as UrlAggRow[] | null) ?? [];
   const urlRows: CitationUrlRow[] = urlRowsRaw
     .map((row) => ({ row, category: categoryOf(row.domain) }))
-    .filter(({ category }) => keep(category))
     .map(({ row, category }) => {
       const resultsCiting = Number(row.results_citing);
       return {
