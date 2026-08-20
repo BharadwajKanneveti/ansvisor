@@ -25,9 +25,6 @@ export interface CitationsFilters {
   topicIds?: string[];
   promptIds?: string[];
   regions?: string[];
-  excludeOwnDomain?: boolean;
-  competitorOnly?: boolean;
-  ownOnly?: boolean;
 }
 
 export interface CitationArticleTypeCount {
@@ -337,22 +334,11 @@ export async function getCitationsOverview(
     return category;
   };
 
-  // Scope filters apply to aggregated rows rather than to citations, which is
-  // exact: a domain's category is a property of the domain, so filtering after
-  // the rollup keeps every count identical to filtering before it.
-  const keep = (category: SourceCategory) => {
-    if (filters.excludeOwnDomain && category === 'you') return false;
-    if (filters.competitorOnly && category !== 'competitor') return false;
-    if (filters.ownOnly && category !== 'you') return false;
-    return true;
-  };
-
   const usagePct = (resultsCiting: number) =>
     totalResults > 0 ? Math.round((resultsCiting / totalResults) * 1000) / 10 : 0;
 
   const rows: CitationDomainRow[] = ((domainRes.data as DomainAggRow[] | null) ?? [])
     .map((row) => ({ row, category: categoryOf(row.domain) }))
-    .filter(({ category }) => keep(category))
     .map(({ row, category }) => {
       const resultsCiting = Number(row.results_citing);
       const totalCitations = Number(row.total_citations);
@@ -373,7 +359,6 @@ export async function getCitationsOverview(
   const urlRowsRaw = (urlRes.data as UrlAggRow[] | null) ?? [];
   const urlRows: CitationUrlRow[] = urlRowsRaw
     .map((row) => ({ row, category: categoryOf(row.domain) }))
-    .filter(({ category }) => keep(category))
     .map(({ row, category }) => {
       const resultsCiting = Number(row.results_citing);
       return {

@@ -811,10 +811,44 @@ export default function CitationsPage() {
   const [hasAnyCitations, setHasAnyCitations] = useState<boolean | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
 
+  const filteredDomainRows = (data?.rows ?? []).filter((row) => {
+    switch (filters.sourceScope) {
+      case 'own':
+        return row.category === 'you';
+
+      case 'competitors':
+        return row.category === 'competitor';
+
+      case 'third_party':
+        return row.category !== 'you' && row.category !== 'competitor';
+
+      case 'all':
+      default:
+        return true;
+    }
+  });
+
+  const filteredUrlRows = (data?.urlRows ?? []).filter((urlRow) => {
+    switch (filters.sourceScope) {
+      case 'own':
+        return urlRow.category === 'you';
+
+      case 'competitors':
+        return urlRow.category === 'competitor';
+
+      case 'third_party':
+        return urlRow.category !== 'you' && urlRow.category !== 'competitor';
+
+      case 'all':
+      default:
+        return true;
+    }
+  });
+
   // Pagination — resets to page 0 whenever any filter changes
   const filterKey = JSON.stringify(filters);
-  const domainPager = usePagination(data?.rows?.length ?? 0, filterKey);
-  const urlPager = usePagination(data?.urlRows?.length ?? 0, filterKey);
+  const domainPager = usePagination(filteredDomainRows.length, filterKey);
+  const urlPager = usePagination(filteredUrlRows.length, filterKey);
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const [topics, setTopics] = useState<Topic[]>([]);
@@ -855,16 +889,6 @@ export default function CitationsPage() {
     filters.prompt,
   ]);
 
-  const apiFilters = useMemo<CitationsFilters>(
-    () => ({
-      ...gapFilters,
-      excludeOwnDomain: filters.excludeOwnDomain,
-      competitorOnly: filters.competitorOnly,
-      ownOnly: filters.ownOnly,
-    }),
-    [gapFilters, filters.excludeOwnDomain, filters.competitorOnly, filters.ownOnly],
-  );
-
   useEffect(() => {
     if (!activeBrandId) return;
     getTopics(activeBrandId)
@@ -892,7 +916,7 @@ export default function CitationsPage() {
     setLoadFailed(false);
     try {
       const [overview, hasAny] = await Promise.all([
-        getCitationsOverview(activeBrandId, apiFilters),
+        getCitationsOverview(activeBrandId, gapFilters),
         brandHasCitations(activeBrandId),
       ]);
       if (stale()) return;
@@ -926,7 +950,7 @@ export default function CitationsPage() {
     } finally {
       if (!stale()) setIsLoading(false);
     }
-  }, [activeBrandId, apiFilters]);
+  }, [activeBrandId, gapFilters]);
 
   useEffect(() => {
     loadData();
@@ -1013,7 +1037,7 @@ export default function CitationsPage() {
           'models',
         ];
 
-        const rows = (data.rows ?? []).map((r) => ({
+        const rows = filteredDomainRows.map((r) => ({
           domain: r.domain,
           category: r.category,
           total_citations: r.totalCitations,
@@ -1036,7 +1060,7 @@ export default function CitationsPage() {
           'usage_pct',
         ];
 
-        const rows = (data.urlRows ?? []).map((r) => ({
+        const rows = filteredUrlRows.map((r) => ({
           url: r.url,
           domain: r.domain,
           category: r.category,
@@ -1161,7 +1185,7 @@ export default function CitationsPage() {
                     Competitor Gaps stays lazy — it fetches on activation. */}
                 <TabsContent value="domains" keepMounted className="mt-4">
                   <DomainsTable
-                    rows={data?.rows ?? []}
+                    rows={filteredDomainRows}
                     brandId={activeBrandId ?? ''}
                     onAdded={loadData}
                     page={domainPager.page}
@@ -1175,7 +1199,7 @@ export default function CitationsPage() {
                 </TabsContent>
                 <TabsContent value="urls" keepMounted className="mt-4">
                   <UrlsTable
-                    rows={data?.urlRows ?? []}
+                    rows={filteredUrlRows}
                     page={urlPager.page}
                     onPage={urlPager.setPage}
                     filters={filters}

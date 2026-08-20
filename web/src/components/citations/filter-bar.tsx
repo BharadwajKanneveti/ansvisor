@@ -43,9 +43,7 @@ export interface CitationsUIFilters {
   region: string;
   topic: string;
   prompt: string;
-  excludeOwnDomain: boolean;
-  competitorOnly: boolean;
-  ownOnly: boolean;
+  sourceScope: 'all' | 'third_party' | 'competitors' | 'own';
 }
 
 export const DEFAULT_CITATIONS_FILTERS: CitationsUIFilters = {
@@ -56,9 +54,7 @@ export const DEFAULT_CITATIONS_FILTERS: CitationsUIFilters = {
   region: '',
   topic: '',
   prompt: '',
-  excludeOwnDomain: false,
-  competitorOnly: false,
-  ownOnly: false,
+  sourceScope: 'all',
 };
 
 export interface PromptOption {
@@ -326,50 +322,21 @@ export function CitationsFilterBar({
 
       {showCategoryToggles && (
         <div className="flex items-center gap-2 pb-0.5">
-          <Button
-            type="button"
-            variant={filters.excludeOwnDomain ? 'default' : 'outline'}
-            size="sm"
-            className="h-8 text-xs"
-            onClick={() =>
-              onChange({
-                excludeOwnDomain: !filters.excludeOwnDomain,
-                ownOnly: false,
-              })
-            }
+          <Select
+            value={filters.sourceScope}
+            onValueChange={(value) => onChange({ sourceScope: value ?? 'all' })}
           >
-            Exclude own domain
-          </Button>
-          <Button
-            type="button"
-            variant={filters.competitorOnly ? 'default' : 'outline'}
-            size="sm"
-            className="h-8 text-xs"
-            onClick={() =>
-              onChange({
-                competitorOnly: !filters.competitorOnly,
-                excludeOwnDomain: !filters.competitorOnly ? true : filters.excludeOwnDomain,
-                ownOnly: false,
-              })
-            }
-          >
-            Competitors only
-          </Button>
-          <Button
-            type="button"
-            variant={filters.ownOnly ? 'default' : 'outline'}
-            size="sm"
-            className="h-8 text-xs"
-            onClick={() =>
-              onChange({
-                ownOnly: !filters.ownOnly,
-                excludeOwnDomain: false,
-                competitorOnly: false,
-              })
-            }
-          >
-            Own domain only
-          </Button>
+            <SelectTrigger>
+              <SelectValue placeholder="Sources" />
+            </SelectTrigger>
+
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="own">Brand</SelectItem>
+              <SelectItem value="competitors">Competitors</SelectItem>
+              <SelectItem value="third_party">Third-party</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       )}
     </div>
