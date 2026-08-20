@@ -11,12 +11,48 @@ import { hasFeature, getPlan, isCloud } from '../config/plans.js';
 import { applyPlanOverrides } from '../lib/plan-guard.js';
 import { generateContentOpportunities } from '../lib/opportunity-generator.js';
 import { updateTargetUrlStats } from '../lib/target-url-stats.js';
+import { persistCitationRows } from '../lib/citation-rows.js';
 import logger from '../lib/logger.js';
 
 function resolveModelPlatform(model) {
   if (model.startsWith('claude-')) return 'claude';
   if (model.startsWith('gemini-')) return 'gemini';
   return 'chatgpt';
+}
+
+/**
+ * Platforms Cloro cannot currently deliver, dropped before anything is
+ * submitted.
+ *
+ * Grok started answering every task with a 500 on 2026-08-18. Leaving it in
+ * the run would submit a paid task per prompt per region, hold the drain open
+ * waiting for results that never arrive, and record nothing — so the platform
+ * is removed up front rather than failing task by task.
+ *
+ * Deliberately a run-time filter and nothing else. Dropping Grok from the
+ * engine picker would also drop it from `ALL_SCRAPERS`, which
+ * `filterByPlan` and `alignPromptsToPlanForOrg` use as the allow-set when
+ * writing prompts — so every prompt edit and every plan change would quietly
+ * strip the stored id, and restoring Grok would need a data repair rather
+ * than a revert. Empty this list when Cloro reports Grok healthy again and
+ * every prompt that still lists it resumes on the next run.
+ */
+export const UNAVAILABLE_PLATFORMS = ['grok-web'];
+
+/**
+ * The platforms a prompt should actually be run against.
+ *
+ * Prompts keep whatever platform ids they were saved with, so the stored array
+ * cannot be trusted at run time: a brand may have turned Shopping off since,
+ * and a platform may be down. Both are filtered here rather than at the picker,
+ * because every id that survives becomes a paid Cloro submission.
+ */
+export function runnablePlatforms(platforms, { shoppingEnabled } = {}) {
+  return (platforms ?? []).filter(
+    (platform) =>
+      !UNAVAILABLE_PLATFORMS.includes(platform) &&
+      (shoppingEnabled || platform !== 'chatgpt-shopping'),
+  );
 }
 
 /**
@@ -210,17 +246,8 @@ export async function processTrackingJob({ brandId, promptId, promptIds, source,
     return allowedModels ? models.filter((m) => allowedModels.includes(m)) : models;
   };
 
-  // Shopping tracking is opt-in per brand: prompts can still carry the
-  // chatgpt-shopping platform from before the brand turned Shopping off (or
-  // from a picker that offered it regardless of the pref), so filter at run
-  // time instead of trusting the stored arrays — each skipped task is a paid
-  // Cloro scrape for data the brand can't even see.
-  const allowedPlatformsFor = (prompt) => {
-    const platforms = prompt.platforms && prompt.platforms.length > 0 ? prompt.platforms : [];
-    return brand.shopping_mode_enabled
-      ? platforms
-      : platforms.filter((p) => p !== 'chatgpt-shopping');
-  };
+  const allowedPlatformsFor = (prompt) =>
+    runnablePlatforms(prompt.platforms, { shoppingEnabled: brand.shopping_mode_enabled });
 
   // 4. Count total tasks: prompt × (models + scrapers) × regions
   let totalTasks = 0;
@@ -236,7 +263,14 @@ export async function processTrackingJob({ brandId, promptId, promptIds, source,
   let completedTasks = 0;
 
   async function insertResult(row) {
-    const { error } = await supabaseAdmin.from('prompt_results').insert(row);
+    // `created_at` comes back from the insert rather than being stamped here:
+    // the citation rows copy it, and a value computed in app code would drift
+    // from the column default by the round trip.
+    const { data: inserted, error } = await supabaseAdmin
+      .from('prompt_results')
+      .insert(row)
+      .select('id, created_at')
+      .single();
     if (error) {
       logger.error({ err: error, brandId }, 'failed to insert tracking result');
       throw error;
@@ -244,6 +278,15 @@ export async function processTrackingJob({ brandId, promptId, promptIds, source,
     insertedCount++;
     // Best-effort: mark target URLs cited by this answer (00032).
     await updateTargetUrlStats(row.prompt_id, row.citations, new Date().toISOString());
+    // Best-effort: expand the citation array into rows (#732). The jsonb
+    // column still holds the same data, so anything missed here is recoverable
+    // with the backfill rather than lost.
+    await persistCitationRows({
+      promptResultId: inserted.id,
+      brandId: row.brand_id,
+      createdAt: inserted.created_at,
+      citations: row.citations,
+    });
   }
 
   // 6. Phase 1: Collect & run all scraper (platform) tasks first

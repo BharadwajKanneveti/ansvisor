@@ -5802,3 +5802,455 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.topics_overview_aggregates(uuid) TO authenticated;
 
+-- ─────────────────────────────────────────────────────────────────────────
+-- migrations/00058_prompt_result_citations.sql
+-- ─────────────────────────────────────────────────────────────────────────
+-- Citations as rows (#732), phase 1: the tables and the write path.
+--
+-- `prompt_results.citations` holds the provider's citation array as jsonb.
+-- Reading it means expanding every answer on every page load: on the largest
+-- brand, 51,679 answers become 679,304 citation entries, and pulling the host
+-- out of each URL costs 4.4s of the 4.6s an aggregate over that window takes —
+-- above the 8s statement timeout once anything else is asked for. The Citations
+-- page works around it by paging the raw rows out to the app tier instead: 50
+-- sequential requests carrying 65 MB of jsonb, capped at 50,000 rows, which
+-- silently truncates that same brand at 51,679.
+--
+-- Expanding once at write time turns that into an ordinary indexed read.
+--
+-- Two tables rather than one, because the naive shape does not fit. Across the
+-- database there are 2,023,979 citation entries but only 449,559 distinct URLs
+-- — the expensive part (url ~92 bytes, title ~63) repeats 4.5 times on
+-- average. One row per citation with the text inline measures 513 MB of heap
+-- against 262 MB split this way, and the instance has 2 GB of RAM to hold a
+-- database that is already 1.1 GB.
+--
+-- Phase 1 only fills the tables; nothing reads them yet. The Citations page
+-- keeps using the jsonb until phase 2 lands the aggregate RPC, so the two can
+-- be compared against each other before anything switches over.
+
+-- ─── Dictionary ──────────────────────────────────────────────────────────────
+
+create table if not exists public.citation_urls (
+  id bigint generated always as identity primary key,
+  -- Truncated to 2048 chars on write. The longest URL observed is 1,333, and
+  -- a btree entry cannot exceed ~2,704 bytes — without a bound, one absurd URL
+  -- would fail the unique index and take the whole result insert with it.
+  url text not null,
+  -- Host without `www.`, lowercased. Derived from the URL at write time so a
+  -- domain rollup never has to parse 2M strings; the application's
+  -- extractHostname() is the single definition of how.
+  domain text not null,
+  -- Whatever title the provider sent the first time this URL appeared.
+  -- Providers word the same page differently between answers, and one stable
+  -- label beats re-deciding per citation.
+  title text,
+  first_seen_at timestamptz not null default now()
+);
+
+create unique index if not exists citation_urls_url_key on public.citation_urls (url);
+create index if not exists citation_urls_domain_idx on public.citation_urls (domain);
+
+-- ─── Facts ───────────────────────────────────────────────────────────────────
+
+create table if not exists public.prompt_result_citations (
+  prompt_result_id uuid not null references public.prompt_results(id) on delete cascade,
+  -- Index within the answer's citation array. With prompt_result_id this is
+  -- the natural identity of a citation, which is what keeps the write path and
+  -- the backfill idempotent when either re-runs over the same answer.
+  position integer not null,
+  url_id bigint not null references public.citation_urls(id),
+
+  -- Denormalized from the parent answer. brand_id carries the row-level
+  -- security rule, which cannot be expressed through a join, and created_at
+  -- lets a brand's window be read without touching prompt_results — the table
+  -- whose 1 GB of TOAST this change exists to stop reading.
+  brand_id uuid not null references public.brands(id) on delete cascade,
+  created_at timestamptz not null,
+
+  primary key (prompt_result_id, position)
+);
+
+-- The Citations page always asks the same question first: this brand, this
+-- window. Everything else narrows what comes back.
+create index if not exists prompt_result_citations_brand_created_idx
+  on public.prompt_result_citations (brand_id, created_at desc);
+
+-- Reverse lookup: which answers cited this URL.
+create index if not exists prompt_result_citations_url_idx
+  on public.prompt_result_citations (url_id);
+
+-- ─── Row level security ──────────────────────────────────────────────────────
+
+alter table public.prompt_result_citations enable row level security;
+
+-- Mirrors prompt_results and prompt_result_shopping_cards: org members read
+-- their own org's rows, the service role writes. The worker goes through
+-- supabaseAdmin and bypasses RLS, but the explicit policy keeps the table
+-- reachable from an authenticated surface.
+create policy "citations: org member select"
+  on public.prompt_result_citations
+  for select
+  using (
+    brand_id in (
+      select b.id
+      from public.brands b
+      where b.organization_id in (
+        select organization_id
+        from public.profiles
+        where id = auth.uid()
+      )
+    )
+  );
+
+create policy "Service role can insert citations"
+  on public.prompt_result_citations
+  for insert
+  with check (true);
+
+create policy "Service role can delete citations"
+  on public.prompt_result_citations
+  for delete
+  using (true);
+
+-- The dictionary is shared across every organization and has no tenant column,
+-- so no row-level rule can express who may read a given URL — the answer lives
+-- in the join, not in the row. RLS is therefore enabled with no select policy
+-- at all: direct reads are denied to everyone but the service role, and the
+-- phase 2 aggregate function will reach it as SECURITY DEFINER after checking
+-- the caller owns the brand it was asked about. Adding a permissive policy
+-- here would let any authenticated user enumerate every URL ever cited for
+-- every customer.
+alter table public.citation_urls enable row level security;
+
+create policy "Service role can insert citation urls"
+  on public.citation_urls
+  for insert
+  with check (true);
+
+comment on table public.prompt_result_citations is
+  'One row per citation per answer (#732). Written alongside prompt_results by the tracking worker and the Cloro webhook handler, and backfilled by server/src/scripts/backfill-citations.js. Source of truth for the Citations page from phase 2 onward; prompt_results.citations remains the raw archival copy.';
+comment on table public.citation_urls is
+  'Deduplicated URL dictionary for prompt_result_citations. Cross-tenant by design: the same page is cited for many brands, and storing the text once is what keeps the citation table a quarter of the size it would otherwise be.';
+comment on column public.prompt_result_citations.position is
+  'Index within prompt_results.citations. With prompt_result_id it is the natural key that makes re-running the write path or the backfill idempotent.';
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- migrations/00059_citation_url_ids.sql
+-- ─────────────────────────────────────────────────────────────────────────
+-- Resolve citation URLs to dictionary ids through the request body (#732).
+--
+-- The write path looked URLs up with a PostgREST `.in()` filter, which is
+-- spelled out in the query string. That was wrong three times over: first
+-- unbounded, then chunked at 100, and it still failed — URLs are
+-- percent-encoded on the way into a URI, so a hundred of them at an average
+-- 92 characters (and up to 1,333) exceeds the request-line and header limits
+-- in front of PostgREST. The symptom was `Bad Request` from the proxy and
+-- `TypeError: fetch failed` when the connection was reset, on precisely the
+-- answers carrying the most citations: 182 of 174,466 after the second fix.
+--
+-- Chunking smaller would have been another guess at someone else's limit.
+-- This removes the class instead: the URLs travel as a jsonb argument in the
+-- POST body, which has no such bound, and one call both inserts what is new
+-- and returns ids for everything asked about.
+
+create or replace function public.citation_url_ids(p_urls jsonb)
+returns table (id bigint, url text)
+language plpgsql
+volatile
+security definer
+set search_path = public
+as $$
+begin
+  -- p_urls: [{"url": "...", "domain": "...", "title": "..."}, ...]
+  --
+  -- `distinct on` because one answer can cite the same page twice, and the
+  -- unique index would reject the second copy inside the same statement
+  -- rather than treating it as a conflict.
+  insert into public.citation_urls (url, domain, title)
+  select distinct on (e.value ->> 'url')
+         e.value ->> 'url',
+         e.value ->> 'domain',
+         nullif(e.value ->> 'title', '')
+  from jsonb_array_elements(p_urls) e
+  where e.value ->> 'url' is not null
+    and e.value ->> 'domain' is not null
+  order by e.value ->> 'url'
+  on conflict (url) do nothing;
+
+  -- Returned for every URL asked about, not only the ones just inserted:
+  -- the caller needs an id per citation, and the overwhelming majority were
+  -- already in the dictionary. A concurrent writer that won the insert race
+  -- is picked up here too, which is what makes the call safe to run twice.
+  return query
+  select cu.id, cu.url
+  from public.citation_urls cu
+  join (
+    select distinct e.value ->> 'url' as u
+    from jsonb_array_elements(p_urls) e
+  ) asked on asked.u = cu.url;
+end;
+$$;
+
+-- The dictionary is cross-tenant and has no select policy of its own, so this
+-- function is the only way in. It is SECURITY DEFINER to reach past that, and
+-- therefore must not be callable by anyone who should not be writing to the
+-- table: the tracking worker and the backfill both go through the service
+-- role, and nothing else has any reason to call it.
+revoke all on function public.citation_url_ids(jsonb) from public;
+revoke all on function public.citation_url_ids(jsonb) from anon;
+revoke all on function public.citation_url_ids(jsonb) from authenticated;
+grant execute on function public.citation_url_ids(jsonb) to service_role;
+
+comment on function public.citation_url_ids(jsonb) is
+  'Insert any unseen citation URLs and return the dictionary id for every URL asked about. Takes its argument in the request body so a long list cannot overflow the query string, which is what broke the .in() lookup it replaces (#732).';
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- migrations/00060_citation_url_ids_variable_conflict.sql
+-- ─────────────────────────────────────────────────────────────────────────
+-- Fix `column reference "url" is ambiguous` in citation_url_ids (#732).
+--
+-- `returns table (id bigint, url text)` declares those names as PL/pgSQL
+-- variables, so `on conflict (url)` inside the body could mean either the
+-- variable or the column, and PL/pgSQL refuses to guess. The function was
+-- therefore broken for every call — 00059 shipped it having been parsed but
+-- never executed, and the unit tests around it mock the database, so neither
+-- could see it.
+--
+-- `#variable_conflict use_column` is the documented resolution: an ambiguous
+-- name resolves to the column, which is what every reference in this body
+-- means. Renaming the output columns would work too and would change the
+-- shape the caller reads, for no benefit here.
+
+create or replace function public.citation_url_ids(p_urls jsonb)
+returns table (id bigint, url text)
+language plpgsql
+volatile
+security definer
+set search_path = public
+as $$
+#variable_conflict use_column
+begin
+  -- p_urls: [{"url": "...", "domain": "...", "title": "..."}, ...]
+  --
+  -- `distinct on` because one answer can cite the same page twice, and the
+  -- unique index would reject the second copy inside the same statement
+  -- rather than treating it as a conflict.
+  insert into public.citation_urls (url, domain, title)
+  select distinct on (e.value ->> 'url')
+         e.value ->> 'url',
+         e.value ->> 'domain',
+         nullif(e.value ->> 'title', '')
+  from jsonb_array_elements(p_urls) e
+  where e.value ->> 'url' is not null
+    and e.value ->> 'domain' is not null
+  order by e.value ->> 'url'
+  on conflict (url) do nothing;
+
+  -- Returned for every URL asked about, not only the ones just inserted:
+  -- the caller needs an id per citation, and the overwhelming majority were
+  -- already in the dictionary. A concurrent writer that won the insert race
+  -- is picked up here too, which is what makes the call safe to run twice.
+  return query
+  select cu.id, cu.url
+  from public.citation_urls cu
+  join (
+    select distinct e.value ->> 'url' as u
+    from jsonb_array_elements(p_urls) e
+  ) asked on asked.u = cu.url;
+end;
+$$;
+
+revoke all on function public.citation_url_ids(jsonb) from public;
+revoke all on function public.citation_url_ids(jsonb) from anon;
+revoke all on function public.citation_url_ids(jsonb) from authenticated;
+grant execute on function public.citation_url_ids(jsonb) to service_role;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- migrations/00061_citations_aggregate_rpcs.sql
+-- ─────────────────────────────────────────────────────────────────────────
+-- Read the Citations page from prompt_result_citations (#732), phase 2.
+--
+-- Phase 1 wrote every citation as a row. Nothing read them: the page still
+-- paged the raw answers out to the app tier — 50 sequential requests carrying
+-- 65 MB of jsonb for the largest brand, capped at 50,000 rows, which silently
+-- truncated that brand at its 51,679. These are what it reads instead.
+--
+-- Three functions rather than one, because combining them is slower. A single
+-- function needs one CTE feeding several aggregations, which Postgres
+-- materializes once it is referenced more than once, and the spill of 744,302
+-- rows carrying domain text costs more than scanning twice. Two attempts at
+-- the combined shape both exceeded the statement timeout; these run in 1.8 to
+-- 4.6 seconds against the largest brand's full history.
+--
+-- Each is `security definer` because citation_urls is a cross-tenant
+-- dictionary with no select policy of its own (see 00058), and each filters on
+-- p_brand_id, which is what scopes the answer to the caller's own data.
+--
+-- `work_mem` is raised for the two aggregating functions. The instance default
+-- is 3.5 MB, and the grouping needs roughly 60 MB — without this it spills to
+-- disk and the same query takes twice as long.
+
+-- ─── Domains ────────────────────────────────────────────────────────────────
+-- Every domain, uncapped. The long tail is the point of the page: 20,366
+-- domains on the largest brand, and the ones cited once are exactly what a
+-- customer is looking for.
+--
+-- Two-level aggregation on purpose. `count(distinct prompt_result_id)` in one
+-- pass makes the planner sort 744,302 rows; grouping to (domain, answer) pairs
+-- first lets it hash both levels, which is 1.75s against 2.36s.
+
+create or replace function public.citations_domains(
+  p_brand_id uuid,
+  p_date_from timestamptz default null,
+  p_date_to timestamptz default null,
+  p_models text[] default null,
+  p_regions text[] default null,
+  p_prompt_ids uuid[] default null,
+  p_topic_ids uuid[] default null
+)
+returns table (
+  domain text,
+  total_citations bigint,
+  results_citing bigint,
+  models text[]
+)
+language sql
+stable
+security definer
+set search_path = public
+set work_mem = '96MB'
+as $$
+  with pairs as (
+    select cu.domain as d, c.prompt_result_id as rid, count(*) as n,
+           min(coalesce(pr.model_used, pr.platform)) as m
+    from public.prompt_result_citations c
+    join public.prompt_results pr on pr.id = c.prompt_result_id
+    join public.citation_urls cu on cu.id = c.url_id
+    where c.brand_id = p_brand_id
+      and pr.brand_id = p_brand_id
+      and pr.platform <> 'chatgpt-shopping'
+      and (p_date_from  is null or (c.created_at >= p_date_from and pr.created_at >= p_date_from))
+      and (p_date_to    is null or (c.created_at <= p_date_to   and pr.created_at <= p_date_to))
+      and (p_models     is null or pr.model_used = any(p_models))
+      and (p_regions    is null or pr.region = any(p_regions))
+      and (p_prompt_ids is null or pr.prompt_id = any(p_prompt_ids))
+      and (p_topic_ids  is null or pr.prompt_id in (
+            select pp.id from public.prompts pp where pp.topic_id = any(p_topic_ids)))
+    group by cu.domain, c.prompt_result_id
+  )
+  select d, sum(n)::bigint, count(*)::bigint, array_agg(distinct m)
+  from pairs group by d
+  order by 2 desc;
+$$;
+
+-- ─── URLs ───────────────────────────────────────────────────────────────────
+-- Capped, unlike domains. The largest brand has 117,316 distinct URLs in its
+-- window — 25 MB of payload for a table that shows a hundred at a time. Every
+-- row carries `total_urls`, the uncapped count, so the surface can say how
+-- many it is not showing rather than implying it has them all.
+
+create or replace function public.citations_urls(
+  p_brand_id uuid,
+  p_date_from timestamptz default null,
+  p_date_to timestamptz default null,
+  p_models text[] default null,
+  p_regions text[] default null,
+  p_prompt_ids uuid[] default null,
+  p_topic_ids uuid[] default null,
+  p_limit integer default 2000
+)
+returns table (
+  url text,
+  domain text,
+  title text,
+  total_citations bigint,
+  results_citing bigint,
+  models text[],
+  total_urls bigint
+)
+language sql
+stable
+security definer
+set search_path = public
+set work_mem = '96MB'
+as $$
+  with pairs as (
+    select c.url_id as uid, c.prompt_result_id as rid, count(*) as n,
+           min(coalesce(pr.model_used, pr.platform)) as m
+    from public.prompt_result_citations c
+    join public.prompt_results pr on pr.id = c.prompt_result_id
+    where c.brand_id = p_brand_id
+      and pr.brand_id = p_brand_id
+      and pr.platform <> 'chatgpt-shopping'
+      and (p_date_from  is null or (c.created_at >= p_date_from and pr.created_at >= p_date_from))
+      and (p_date_to    is null or (c.created_at <= p_date_to   and pr.created_at <= p_date_to))
+      and (p_models     is null or pr.model_used = any(p_models))
+      and (p_regions    is null or pr.region = any(p_regions))
+      and (p_prompt_ids is null or pr.prompt_id = any(p_prompt_ids))
+      and (p_topic_ids  is null or pr.prompt_id in (
+            select pp.id from public.prompts pp where pp.topic_id = any(p_topic_ids)))
+    group by c.url_id, c.prompt_result_id
+  ),
+  agg as (
+    select uid, sum(n)::bigint as tc, count(*)::bigint as rc, array_agg(distinct m) as ms
+    from pairs group by uid
+  )
+  -- The dictionary is joined after the limit, so the URL text is fetched for
+  -- the rows that survive rather than for all 117,316 of them.
+  select cu.url, cu.domain, cu.title, a.tc, a.rc, a.ms,
+         (select count(*)::bigint from agg)
+  from (select * from agg order by tc desc, uid limit p_limit) a
+  join public.citation_urls cu on cu.id = a.uid
+  order by a.tc desc;
+$$;
+
+-- ─── Window stats ───────────────────────────────────────────────────────────
+-- Separate from the aggregates because it counts answers that cite nothing,
+-- which is the denominator every usage percentage on the page divides by. The
+-- citation tables cannot see those answers at all.
+
+create or replace function public.citations_window_stats(
+  p_brand_id uuid,
+  p_date_from timestamptz default null,
+  p_date_to timestamptz default null,
+  p_models text[] default null,
+  p_regions text[] default null,
+  p_prompt_ids uuid[] default null,
+  p_topic_ids uuid[] default null
+)
+returns table (results bigint, regions text[])
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select count(*)::bigint,
+         coalesce(array_agg(distinct pr.region) filter (where pr.region is not null), '{}')
+  from public.prompt_results pr
+  where pr.brand_id = p_brand_id
+    and pr.platform <> 'chatgpt-shopping'
+    and (p_date_from  is null or pr.created_at >= p_date_from)
+    and (p_date_to    is null or pr.created_at <= p_date_to)
+    and (p_models     is null or pr.model_used = any(p_models))
+    and (p_regions    is null or pr.region = any(p_regions))
+    and (p_prompt_ids is null or pr.prompt_id = any(p_prompt_ids))
+    and (p_topic_ids  is null or pr.prompt_id in (
+          select pp.id from public.prompts pp where pp.topic_id = any(p_topic_ids)));
+$$;
+
+revoke all on function public.citations_domains(uuid, timestamptz, timestamptz, text[], text[], uuid[], uuid[]) from public;
+revoke all on function public.citations_urls(uuid, timestamptz, timestamptz, text[], text[], uuid[], uuid[], integer) from public;
+revoke all on function public.citations_window_stats(uuid, timestamptz, timestamptz, text[], text[], uuid[], uuid[]) from public;
+
+grant execute on function public.citations_domains(uuid, timestamptz, timestamptz, text[], text[], uuid[], uuid[]) to authenticated, service_role;
+grant execute on function public.citations_urls(uuid, timestamptz, timestamptz, text[], text[], uuid[], uuid[], integer) to authenticated, service_role;
+grant execute on function public.citations_window_stats(uuid, timestamptz, timestamptz, text[], text[], uuid[], uuid[]) to authenticated, service_role;
+
+comment on function public.citations_domains(uuid, timestamptz, timestamptz, text[], text[], uuid[], uuid[]) is
+  'Per-domain citation aggregates for the Citations page (#732). Returns every domain — the long tail is the point.';
+comment on function public.citations_urls(uuid, timestamptz, timestamptz, text[], text[], uuid[], uuid[], integer) is
+  'Per-URL citation aggregates for the Citations page (#732), capped at p_limit and ordered by citation count. Every row carries total_urls, the uncapped count.';
+comment on function public.citations_window_stats(uuid, timestamptz, timestamptz, text[], text[], uuid[], uuid[]) is
+  'Answers scanned and regions observed in a Citations window (#732) — the denominator for every usage percentage, including answers that cite nothing.';
+
