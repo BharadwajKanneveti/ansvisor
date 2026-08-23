@@ -856,6 +856,7 @@ export default function CitationsPage() {
   const [prompts, setPrompts] = useState<PromptOption[]>([]);
   const [availablePlatforms, setAvailablePlatforms] = useState<PlatformOption[]>([]);
   const [availableRegions, setAvailableRegions] = useState<string[]>([]);
+  const isRefetching = isLoading && data !== null;
 
   const activeBrandId = brand?.id ?? null;
 
@@ -916,13 +917,9 @@ export default function CitationsPage() {
     setIsLoading(true);
     setLoadFailed(false);
     try {
-      const [overview, hasAny] = await Promise.all([
-        getCitationsOverview(activeBrandId, gapFilters),
-        brandHasCitations(activeBrandId),
-      ]);
+      const overview = await getCitationsOverview(activeBrandId, gapFilters);
       if (stale()) return;
       setData(overview);
-      setHasAnyCitations(hasAny);
 
       // Surface filter options from the observed models/regions.
       const platformOptions = buildPlatformOptions(overview.rows);
@@ -952,6 +949,28 @@ export default function CitationsPage() {
       if (!stale()) setIsLoading(false);
     }
   }, [activeBrandId, gapFilters]);
+
+  useEffect(() => {
+    if (!activeBrandId) return;
+
+    let active = true;
+
+    brandHasCitations(activeBrandId)
+      .then((result) => {
+        if (!active) return;
+        setHasAnyCitations(result);
+      })
+      .catch((err) => {
+        if (!active) return;
+        console.error('[citations] brandHasCitations failed', err);
+        setLoadFailed(true);
+        toast.error('Failed to check citation data');
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [activeBrandId]);
 
   useEffect(() => {
     loadData();
@@ -1152,92 +1171,101 @@ export default function CitationsPage() {
         regions={availableRegions}
       />
 
-      {isLoading ? (
+      {isLoading && data === null ? (
         <CitationsSkeleton />
       ) : (
-        <>
-          <div className="grid gap-4 sm:grid-cols-3">
-            {kpis.map((k) => (
-              <KpiCard key={k.title} {...k} />
-            ))}
-          </div>
+        <div className="relative">
+          {isRefetching && (
+            <div className="absolute inset-0 z-10 flex items-start justify-center rounded-lg bg-background/50 pt-32">
+              <div className="flex items-center rounded-md border bg-background p-2.5 shadow-sm">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              </div>
+            </div>
+          )}
+          <div className={cn('space-y-6', isRefetching && 'opacity-60')}>
+            <div className="grid gap-4 sm:grid-cols-3">
+              {kpis.map((k) => (
+                <KpiCard key={k.title} {...k} />
+              ))}
+            </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">{t('sourcesTitle')}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {/* Only Domains and URLs are scoped by it — Competitor Gaps and
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">{t('sourcesTitle')}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {/* Only Domains and URLs are scoped by it — Competitor Gaps and
                   Source Types read the same data whatever it says — so it
                   appears with those two rather than standing over all four
                   claiming to narrow them. */}
-              {(sourceTab === 'domains' || sourceTab === 'urls') && (
-                <SourceScopeFilter
-                  value={filters.sourceScope}
-                  onChange={(sourceScope) => setFilters((f) => ({ ...f, sourceScope }))}
-                  className="mb-4"
-                />
-              )}
-              <Tabs
-                value={sourceTab}
-                onValueChange={(v) => setSourceTab(v as 'domains' | 'urls' | 'gaps' | 'types')}
-              >
-                <TabsList>
-                  <TabsTrigger value="domains">
-                    {t('tabDomains')} ({data?.totals.domains ?? 0})
-                  </TabsTrigger>
-                  <TabsTrigger value="urls">
-                    {t('tabUrls')} ({data?.totals.urls ?? 0})
-                  </TabsTrigger>
-                  <TabsTrigger value="gaps">Competitor Gaps</TabsTrigger>
-                  <TabsTrigger value="types">{t('sourceTypesTitle')}</TabsTrigger>
-                </TabsList>
-                {/* keepMounted: data is already in memory, so mount these panels
+                {(sourceTab === 'domains' || sourceTab === 'urls') && (
+                  <SourceScopeFilter
+                    value={filters.sourceScope}
+                    onChange={(sourceScope) => setFilters((f) => ({ ...f, sourceScope }))}
+                    className="mb-4"
+                  />
+                )}
+                <Tabs
+                  value={sourceTab}
+                  onValueChange={(v) => setSourceTab(v as 'domains' | 'urls' | 'gaps' | 'types')}
+                >
+                  <TabsList>
+                    <TabsTrigger value="domains">
+                      {t('tabDomains')} ({data?.totals.domains ?? 0})
+                    </TabsTrigger>
+                    <TabsTrigger value="urls">
+                      {t('tabUrls')} ({data?.totals.urls ?? 0})
+                    </TabsTrigger>
+                    <TabsTrigger value="gaps">Competitor Gaps</TabsTrigger>
+                    <TabsTrigger value="types">{t('sourceTypesTitle')}</TabsTrigger>
+                  </TabsList>
+                  {/* keepMounted: data is already in memory, so mount these panels
                     once and make switching a pure CSS visibility toggle (#299).
                     Competitor Gaps stays lazy — it fetches on activation. */}
-                <TabsContent value="domains" keepMounted className="mt-4">
-                  <DomainsTable
-                    rows={filteredDomainRows}
-                    brandId={activeBrandId ?? ''}
-                    onAdded={loadData}
-                    page={domainPager.page}
-                    onPage={domainPager.setPage}
-                    filters={filters}
-                    onResetFilters={() => setFilters({ ...DEFAULT_FILTERS, datePreset: 'all' })}
-                    hasAnyCitations={hasAnyCitations}
-                    loadFailed={loadFailed}
-                    onRetry={loadData}
-                  />
-                </TabsContent>
-                <TabsContent value="urls" keepMounted className="mt-4">
-                  <UrlsTable
-                    rows={filteredUrlRows}
-                    page={urlPager.page}
-                    onPage={urlPager.setPage}
-                    filters={filters}
-                    onResetFilters={() => setFilters({ ...DEFAULT_FILTERS, datePreset: 'all' })}
-                    hasAnyCitations={hasAnyCitations}
-                    loadFailed={loadFailed}
-                    onRetry={loadData}
-                  />
-                </TabsContent>
-                <TabsContent value="gaps" className="mt-4">
-                  <CompetitorGapsTab loading={gapsLoading} gaps={gaps} />
-                </TabsContent>
-                <TabsContent value="types" keepMounted className="mt-4">
-                  {/* Cap the width: the donut sizes itself to its container, and
-                      an unbounded full-width chart dwarfs the legend (#486). */}
-                  <div className="mx-auto w-full max-w-md">
-                    <SourceTypeDonut
-                      data={data?.sourceTypeBreakdown ?? []}
-                      total={data?.totals.domains ?? 0}
+                  <TabsContent value="domains" keepMounted className="mt-4">
+                    <DomainsTable
+                      rows={filteredDomainRows}
+                      brandId={activeBrandId ?? ''}
+                      onAdded={loadData}
+                      page={domainPager.page}
+                      onPage={domainPager.setPage}
+                      filters={filters}
+                      onResetFilters={() => setFilters({ ...DEFAULT_FILTERS, datePreset: 'all' })}
+                      hasAnyCitations={hasAnyCitations}
+                      loadFailed={loadFailed}
+                      onRetry={loadData}
                     />
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
-        </>
+                  </TabsContent>
+                  <TabsContent value="urls" keepMounted className="mt-4">
+                    <UrlsTable
+                      rows={filteredUrlRows}
+                      page={urlPager.page}
+                      onPage={urlPager.setPage}
+                      filters={filters}
+                      onResetFilters={() => setFilters({ ...DEFAULT_FILTERS, datePreset: 'all' })}
+                      hasAnyCitations={hasAnyCitations}
+                      loadFailed={loadFailed}
+                      onRetry={loadData}
+                    />
+                  </TabsContent>
+                  <TabsContent value="gaps" className="mt-4">
+                    <CompetitorGapsTab loading={gapsLoading} gaps={gaps} />
+                  </TabsContent>
+                  <TabsContent value="types" keepMounted className="mt-4">
+                    {/* Cap the width: the donut sizes itself to its container, and
+                      an unbounded full-width chart dwarfs the legend (#486). */}
+                    <div className="mx-auto w-full max-w-md">
+                      <SourceTypeDonut
+                        data={data?.sourceTypeBreakdown ?? []}
+                        total={data?.totals.domains ?? 0}
+                      />
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       )}
     </div>
   );
