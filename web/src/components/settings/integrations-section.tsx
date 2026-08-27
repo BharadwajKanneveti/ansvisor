@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { BarChart3, Loader2, Search, Unplug } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import {
   getIntegrationStatus,
   connectIntegration,
@@ -48,13 +49,12 @@ import { matchProperty } from '@/lib/property-match';
  * provider only supplies its labels and any post-connection UI of its own.
  */
 export function IntegrationsSection() {
+  const t = useTranslations('settings');
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Integrations</CardTitle>
-        <CardDescription>
-          Connect external data sources. Connections are shared with your whole organization.
-        </CardDescription>
+        <CardTitle>{t('integrations')}</CardTitle>
+        <CardDescription>{t('integrations_description')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <IntegrationCard
@@ -100,6 +100,7 @@ function IntegrationCard({
   authConfigEnv: string;
   children?: ReactNode;
 }) {
+  const t = useTranslations('settings');
   const [status, setStatus] = useState<IntegrationStatus | null>(null);
   const [connecting, setConnecting] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
@@ -204,7 +205,7 @@ function IntegrationCard({
                   variant="outline"
                   className="border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                 >
-                  Connected
+                  {t('integrations_connected')}
                 </Badge>
               )}
             </div>
@@ -216,7 +217,7 @@ function IntegrationCard({
           <Skeleton className="h-8 w-24" />
         ) : status === 'not_configured' ? (
           <Badge variant="outline" className="text-muted-foreground shrink-0">
-            Not configured
+            {t('integrations_notConfigured')}
           </Badge>
         ) : status === 'connected' ? (
           <Dialog>
@@ -224,18 +225,19 @@ function IntegrationCard({
               render={<Button variant="outline" size="sm" className="gap-2 shrink-0" />}
             >
               <Unplug className="h-3.5 w-3.5" />
-              Disconnect
+              {t('integrations_disconnect')}
             </DialogTrigger>
             <DialogContent className="sm:max-w-sm">
               <DialogHeader>
-                <DialogTitle>Disconnect {label}</DialogTitle>
-                <DialogDescription>
-                  The stored connection is removed for the whole organization. You can reconnect at
-                  any time.
-                </DialogDescription>
+                <DialogTitle>
+                  {t('integrations_disconnect')} {label}
+                </DialogTitle>
+                <DialogDescription>{t('integrations_disconnectDescription')}</DialogDescription>
               </DialogHeader>
               <DialogFooter>
-                <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
+                <DialogClose render={<Button variant="outline" />}>
+                  {t('integrations_cancel')}
+                </DialogClose>
                 <DialogClose
                   render={
                     <Button
@@ -245,7 +247,7 @@ function IntegrationCard({
                     />
                   }
                 >
-                  Disconnect
+                  {t('integrations_disconnect')}
                 </DialogClose>
               </DialogFooter>
             </DialogContent>
@@ -258,7 +260,7 @@ function IntegrationCard({
             disabled={connecting}
           >
             {connecting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            {connecting ? 'Connecting…' : 'Connect'}
+            {connecting ? t('integrations_connecting') : t('integrations_connect')}
           </Button>
         )}
       </div>
@@ -320,6 +322,7 @@ function PropertyMapping({
   loadRows: () => Promise<BrandPropertyRow[]>;
   save: (brandId: string, value: string | null) => Promise<void>;
 }) {
+  const t = useTranslations('settings');
   const [options, setOptions] = useState<PropertyOption[] | null>(null);
   const [rows, setRows] = useState<BrandPropertyRow[] | null>(null);
   const [loadFailed, setLoadFailed] = useState<string | null>(null);
@@ -401,14 +404,14 @@ function PropertyMapping({
   // mapping. Search Console values are the label (a URL), but a GA4 value is a
   // numeric id, which would otherwise show as a bare number once picked.
   const selectItems = [
-    { value: NONE_VALUE, label: 'Not mapped' },
+    { value: NONE_VALUE, label: t('integrations_notMapped') },
     ...options.map((option) => ({ value: option.value, label: option.label })),
   ];
 
   return (
     <div className="rounded-lg border p-4 space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-medium">Property mapping</p>
+        <p className="text-sm font-medium">{t('integrations_propertyMapping')}</p>
         <span className="text-xs text-muted-foreground">
           {mappedCount} of {rows.length} brand{rows.length !== 1 ? 's' : ''} mapped
         </span>
@@ -428,10 +431,10 @@ function PropertyMapping({
                 onValueChange={(v) => handlePick(row.brandId, v ?? NONE_VALUE)}
               >
                 <SelectTrigger className="h-8 w-64 text-xs">
-                  <SelectValue placeholder="Select a property" />
+                  <SelectValue placeholder={t('integrations_selectProperty')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={NONE_VALUE}>Not mapped</SelectItem>
+                  <SelectItem value={NONE_VALUE}>{t('integrations_notMapped')}</SelectItem>
                   {options.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}

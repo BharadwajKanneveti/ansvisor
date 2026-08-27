@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2, Lock, Sparkles, Trash2, CheckCircle2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useUserRole } from '@/hooks/use-user-role';
 
 interface KeyState {
@@ -39,6 +40,8 @@ function formatDate(iso: string | null): string {
  * On save / clear we just refetch.
  */
 export function AgentSection() {
+  const t = useTranslations('settings');
+  const tCommon = useTranslations('common');
   const [state, setState] = useState<KeyState | null>(null);
   const [loading, setLoading] = useState(true);
   const [input, setInput] = useState('');
@@ -121,12 +124,9 @@ export function AgentSection() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Sparkles className="h-4 w-4" />
-          Agent
+          {t('agent')}
         </CardTitle>
-        <CardDescription>
-          Bring your own Anthropic API key. The in-product agent uses your key to call Claude
-          directly — usage is billed to your Anthropic account, not to Ansvisor.
-        </CardDescription>
+        <CardDescription>{t('agent_description')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {loading ? (
@@ -136,29 +136,26 @@ export function AgentSection() {
             <div className="flex items-center gap-2">
               <Badge variant="secondary" className="gap-1">
                 <CheckCircle2 className="h-3 w-3" />
-                Key configured
+                {t('agent_keyConfigured')}
               </Badge>
               {state.last4 && (
                 <code className="text-xs font-mono text-muted-foreground">sk-…{state.last4}</code>
               )}
             </div>
             <p className="text-xs text-muted-foreground">
-              Saved {formatDate(state.setAt)}
-              {state.setByEmail && ` by ${state.setByEmail}`}.
+              {t('agent_savedAt', { date: formatDate(state.setAt) })}
+              {state.setByEmail && ` ${t('agent_savedBy', { email: state.setByEmail })}`}.
             </p>
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">
-            No key configured. The agent will be locked for everyone in this organization until a
-            key is saved.
-          </p>
+          <p className="text-sm text-muted-foreground">{t('agent_noKey')}</p>
         )}
 
         {canAdmin ? (
           <>
             <div className="space-y-2">
               <Label htmlFor="anthropic-key">
-                {configured ? 'Replace key' : 'Anthropic API key'}
+                {configured ? t('agent_replaceKey') : t('agent_anthropicKeyLabel')}
               </Label>
               <div className="flex gap-2">
                 <Input
@@ -166,7 +163,7 @@ export function AgentSection() {
                   type="password"
                   autoComplete="off"
                   spellCheck={false}
-                  placeholder="sk-ant-…"
+                  placeholder={t('agent_keyPlaceholder')}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   disabled={saving}
@@ -174,20 +171,22 @@ export function AgentSection() {
                 />
                 <Button onClick={handleSave} disabled={saving || !input.trim()}>
                   {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isReplacing ? 'Replace' : 'Save'}
+                  {isReplacing ? t('agent_replace') : tCommon('save')}
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Get a key from{' '}
-                <a
-                  href="https://console.anthropic.com/settings/keys"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="underline"
-                >
-                  console.anthropic.com
-                </a>
-                . The key is encrypted at rest; Ansvisor support cannot read it.
+                {t.rich('agent_keyHint', {
+                  link: (chunks) => (
+                    <a
+                      href="https://console.anthropic.com/settings/keys"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline"
+                    >
+                      {chunks}
+                    </a>
+                  ),
+                })}
               </p>
             </div>
 
@@ -205,7 +204,7 @@ export function AgentSection() {
                   ) : (
                     <Trash2 className="mr-2 h-4 w-4" />
                   )}
-                  Remove key
+                  {t('agent_removeKey')}
                 </Button>
               </div>
             )}
@@ -218,11 +217,8 @@ export function AgentSection() {
           <div className="flex items-start gap-3 rounded-md border bg-muted/40 p-3 text-sm">
             <Lock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
             <div>
-              <p className="font-medium">Admin-only setting</p>
-              <p className="mt-1 text-muted-foreground">
-                Only org admins can add, replace, or remove the Anthropic API key. Ask an admin if
-                you need it changed.
-              </p>
+              <p className="font-medium">{t('agent_adminOnly')}</p>
+              <p className="mt-1 text-muted-foreground">{t('agent_adminOnlyHint')}</p>
             </div>
           </div>
         )}
