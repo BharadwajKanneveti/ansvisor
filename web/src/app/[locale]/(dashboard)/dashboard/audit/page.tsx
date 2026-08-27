@@ -13,6 +13,16 @@ import {
   AlertCircle,
   RefreshCw,
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Link, useRouter } from '@/i18n/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -405,15 +415,34 @@ export default function SiteAuditPage() {
                       : t(`status.${h.status}`)}
                   </span>
                 </Link>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
-                  onClick={() => handleDelete(h.id)}
-                  aria-label={t('deleteAudit')}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                <Dialog>
+                  <DialogTrigger
+                    render={
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                        aria-label={t('deleteAudit')}
+                      />
+                    }
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-sm">
+                    <DialogHeader>
+                      <DialogTitle>{t('deleteAudit')}</DialogTitle>
+                      <DialogDescription>{t('deleteConfirm')}</DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <DialogClose render={<Button variant="outline" />}>{t('cancel')}</DialogClose>
+                      <DialogClose
+                        render={<Button variant="destructive" onClick={() => handleDelete(h.id)} />}
+                      >
+                        {t('deleteAudit')}
+                      </DialogClose>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
             ))}
           </CardContent>
