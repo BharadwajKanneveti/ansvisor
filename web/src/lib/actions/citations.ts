@@ -17,7 +17,13 @@ import { citationUrlMatchKey, normalizeCitationUrl } from '@/lib/citations/norma
 
 export type CitationsDatePreset = '24h' | '7d' | '30d' | '90d' | 'all' | 'custom';
 
-export type { CitationsSourceScope };
+// Do NOT re-export types from this file with `export type { ... }`. This is a
+// 'use server' module, and Turbopack's production transform lists every export
+// clause in ensureServerEntryExports as a runtime value — a re-exported type
+// becomes a bare undefined identifier there, and the whole module (every
+// citation server action with it) dies at evaluation with a ReferenceError.
+// Import CitationsSourceScope from '@/lib/citations/scope' instead.
+// Declarations (`export type X = ...`, `export interface`) are erased fine.
 
 export interface CitationsFilters {
   datePreset: CitationsDatePreset;
