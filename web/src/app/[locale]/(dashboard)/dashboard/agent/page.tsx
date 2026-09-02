@@ -16,6 +16,15 @@ const AgentChart = dynamic(
     loading: () => <Skeleton className="h-64 w-full" />,
   },
 );
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { useFeatureGate } from '@/hooks/use-feature-gate';
 import { Link } from '@/i18n/navigation';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -136,6 +145,7 @@ function AgentChat(props: {
     messagesEndRef,
   } = props;
   const t = useTranslations('agent');
+  const [pendingConfirm, setPendingConfirm] = useState<string | null>(null);
 
   // Ref mirrors activeId for prepareSendMessagesRequest. Reading the
   // state directly from the transport closure gives us a stale snapshot —
@@ -254,7 +264,6 @@ function AgentChat(props: {
   }
 
   async function deleteConversation(id: string) {
-    if (!confirm(t('deleteConfirm'))) return;
     const res = await fetch(`/api/agent/conversations/${id}`, { method: 'DELETE' });
     if (!res.ok) {
       const body = await res.json().catch(() => null);
@@ -346,7 +355,7 @@ function AgentChat(props: {
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  void deleteConversation(c.id);
+                  setPendingConfirm(c.id);
                 }}
                 className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
                 aria-label={t('deleteConversation')}
@@ -355,6 +364,37 @@ function AgentChat(props: {
               </button>
             </div>
           ))}
+          <Dialog
+            open={pendingConfirm !== null}
+            onOpenChange={(v) => !v && setPendingConfirm(null)}
+          >
+            <DialogContent className="sm:max-w-sm">
+              <DialogHeader>
+                <DialogTitle>{t('deleteConversation')}</DialogTitle>
+                <DialogDescription>{t('deleteConfirm')}</DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <DialogClose render={<Button variant="outline" />}>{t('cancel')}</DialogClose>
+                <DialogClose
+                  render={
+                    <Button
+                      variant="destructive"
+                      onClick={(e) => {
+                        e.stopPropagation();
+
+                        if (pendingConfirm === null) {
+                          return;
+                        }
+                        void deleteConversation(pendingConfirm);
+                      }}
+                    />
+                  }
+                >
+                  {t('deleteConversation')}
+                </DialogClose>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </aside>
 
