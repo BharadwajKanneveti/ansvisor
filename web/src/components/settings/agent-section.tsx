@@ -217,22 +217,22 @@ export function AgentSection() {
                     </DialogHeader>
 
                     <DialogFooter>
-                      <DialogClose render={<Button variant="outline" />}>{t('cancel')}</DialogClose>
-
-                      <DialogClose
-                        render={
-                          <Button
-                            variant="destructive"
-                            disabled={clearing}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              void handleClear();
-                            }}
-                          />
-                        }
-                      >
-                        {t('remove')}
+                      <DialogClose render={<Button variant="outline" />}>
+                        {tCommon('cancel')}
                       </DialogClose>
+
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        disabled={clearing}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleClear();
+                        }}
+                      >
+                        {clearing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {t('remove')}
+                      </Button>
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>

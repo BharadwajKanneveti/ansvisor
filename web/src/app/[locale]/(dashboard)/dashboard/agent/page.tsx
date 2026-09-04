@@ -16,15 +16,6 @@ const AgentChart = dynamic(
     loading: () => <Skeleton className="h-64 w-full" />,
   },
 );
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { useFeatureGate } from '@/hooks/use-feature-gate';
 import { Link } from '@/i18n/navigation';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -44,6 +35,15 @@ import {
   ChevronDown,
   KeyRound,
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface ConversationRow {
   id: string;
@@ -145,6 +145,7 @@ function AgentChat(props: {
     messagesEndRef,
   } = props;
   const t = useTranslations('agent');
+  const tc = useTranslations('common');
   const [pendingConfirm, setPendingConfirm] = useState<string | null>(null);
 
   // Ref mirrors activeId for prepareSendMessagesRequest. Reading the
@@ -374,7 +375,7 @@ function AgentChat(props: {
                 <DialogDescription>{t('deleteConfirm')}</DialogDescription>
               </DialogHeader>
               <DialogFooter>
-                <DialogClose render={<Button variant="outline" />}>{t('cancel')}</DialogClose>
+                <DialogClose render={<Button variant="outline" />}>{tc('cancel')}</DialogClose>
                 <DialogClose
                   render={
                     <Button
@@ -390,7 +391,7 @@ function AgentChat(props: {
                     />
                   }
                 >
-                  {t('deleteConversation')}
+                  {tc('delete')}
                 </DialogClose>
               </DialogFooter>
             </DialogContent>

@@ -180,6 +180,7 @@ export default function ReportsPage() {
     try {
       await deleteReport(id);
       setReports((prev) => prev.filter((r) => r.id !== id));
+      setPendingConfirm(null);
     } catch (err) {
       console.error('Report delete error:', err);
       toast.error(t('deleteFailed'));
@@ -283,25 +284,26 @@ export default function ReportsPage() {
                     <DialogDescription>{t('deleteConfirm')}</DialogDescription>
                   </DialogHeader>
                   <DialogFooter>
-                    <DialogClose render={<Button variant="outline" />}>{t('cancel')}</DialogClose>
-                    <DialogClose
-                      render={
-                        <Button
-                          variant="destructive"
-                          disabled={deletingId === pendingConfirm}
-                          onClick={(e) => {
-                            e.stopPropagation();
+                    <DialogClose render={<Button variant="outline" />}>{tc('cancel')}</DialogClose>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      disabled={deletingId === pendingConfirm}
+                      onClick={(e) => {
+                        e.stopPropagation();
 
-                            if (pendingConfirm === null) {
-                              return;
-                            }
-                            void handleDelete(pendingConfirm);
-                          }}
-                        />
-                      }
+                        if (pendingConfirm === null) {
+                          return;
+                        }
+
+                        void handleDelete(pendingConfirm);
+                      }}
                     >
-                      {t('delete')}
-                    </DialogClose>
+                      {deletingId === pendingConfirm && (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      )}
+                      {tc('delete')}
+                    </Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>

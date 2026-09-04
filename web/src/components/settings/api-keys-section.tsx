@@ -221,7 +221,9 @@ export function ApiKeysSection() {
                   <DialogDescription>{t('revokeApiKeyConfirm')}</DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
-                  <DialogClose render={<Button variant="outline" />}>{t('cancel')}</DialogClose>
+                  <DialogClose render={<Button variant="outline" />}>
+                    {tCommon('cancel')}
+                  </DialogClose>
                   <DialogClose
                     render={
                       <Button
